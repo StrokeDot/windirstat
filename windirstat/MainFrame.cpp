@@ -5,7 +5,7 @@
 // Distributed WITHOUT ANY WARRANTY; see LICENSE.md for details.
 
 #include "pch.h"
-#include "VisualizationPane.h"
+#include "SmartStorageUpdater.h"
 #include "FileTabbedView.h"
 #include "FileTreeView.h"
 #include "ExtensionView.h"
@@ -13,7 +13,6 @@
 #include "PageFiltering.h"
 #include "PageCleanups.h"
 #include "PageFileTree.h"
-#include "PageTreeMap.h"
 #include "PagePermissions.h"
 #include "PageGeneral.h"
 #include "PagePrompts.h"
@@ -61,7 +60,6 @@ bool CSettingsSheet::ShowSettings(const int initialPage, const bool refreshOnFil
     sheet.AddPage<CPageGeneral>();
     sheet.AddPage<CPageFiltering>(refreshOnFilteringChange); // index 1
     sheet.AddPage<CPageFileTree>();
-    sheet.AddPage<CPageTreeMap>();
     sheet.AddPage<CPagePermissions>();
     sheet.AddPage<CPageCleanups>();
     sheet.AddPage<CPagePrompts>();
@@ -108,13 +106,6 @@ bool CWdsSplitterWnd::PreCreateWindow(CREATESTRUCT& cs)
 {
     cs.style |= WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
     return CSplitterWnd::PreCreateWindow(cs);
-}
-
-void CWdsSplitterWnd::OnTrackingChanged(const bool tracking)
-{
-    // Keep the cached graph visible until a drag that resizes it finishes.
-    if (auto* pane = CMainFrame::Get()->GetVisualizationPane(); IsChild(pane->Handle()))
-        pane->SuspendRecalculationDrawing(tracking);
 }
 
 void CWdsSplitterWnd::StopTracking(const bool bAccept)
@@ -301,7 +292,11 @@ void CMainFrame::CreateProgress(ULONGLONG range)
 
     m_progressRange = range;
     m_progressPos = 0;
+    m_scanFinalizing = false;
     m_progressVisible = true;
+    const auto now = ScanTiming::Clock::now();
+    m_scanTiming.Start(now);
+    m_scanTiming.SetPaused(m_scanSuspend, now);
     if (range > 0)
     {
         CreateStatusProgress();
@@ -343,9 +338,17 @@ void CMainFrame::SetProgressComplete()
     CDirStatApp::Get()->OnIdle(0);
 }
 
+void CMainFrame::SetProgressFinalizing()
+{
+    if (!m_progressVisible) return;
+    m_scanFinalizing = true;
+    UpdateProgress();
+}
+
 void CMainFrame::SuspendState(const bool suspend)
 {
     m_scanSuspend = suspend;
+    if (m_progressVisible) m_scanTiming.SetPaused(suspend, ScanTiming::Clock::now());
     if (m_taskbarList)
     {
         if (suspend && m_taskbarButtonState != TBPF_PAUSED)
@@ -360,6 +363,13 @@ void CMainFrame::SuspendState(const bool suspend)
     }
     CPacman::SetGlobalSuspendState(suspend);
     UpdateProgress();
+}
+
+static std::wstring FormatScanTime(const std::chrono::seconds duration)
+{
+    const auto seconds = duration.count();
+    if (seconds >= 3600) return std::format(L"{}:{:02}:{:02}", seconds / 3600, seconds / 60 % 60, seconds % 60);
+    return std::format(L"{}:{:02}", seconds / 60, seconds % 60);
 }
 
 void CMainFrame::UpdateProgress()
@@ -390,7 +400,13 @@ void CMainFrame::UpdateProgress()
         suspended = suspendString;
     }
 
-    if (m_progressRange > 0 && m_progress.m_hWnd != nullptr)
+    if (m_scanFinalizing)
+    {
+        titlePrefix = Localization::Lookup(IDS_SCAN_FINALIZING);
+        if (m_taskbarList && m_taskbarButtonState != TBPF_INDETERMINATE && m_taskbarButtonState != TBPF_PAUSED)
+            m_taskbarList->SetProgressState(*this, m_taskbarButtonState = TBPF_INDETERMINATE);
+    }
+    else if (m_progressRange > 0 && m_progress.m_hWnd != nullptr)
     {
         // Limit progress at 100% as hard-linked files will count twice
         const int pos = std::min(static_cast<int>((m_progressPos * 100ull) / m_progressRange), 100);
@@ -417,6 +433,13 @@ void CMainFrame::UpdateProgress()
     }
 
     TrimString(titlePrefix);
+    const auto now = ScanTiming::Clock::now();
+    titlePrefix += L" · " + Localization::Format(IDS_SCAN_ELAPSEDs, FormatScanTime(m_scanTiming.Elapsed(now)));
+    if (!m_scanFinalizing)
+    {
+        if (const auto remaining = m_scanTiming.Estimate(now, m_progressPos, m_progressRange))
+            titlePrefix += L" · " + Localization::Format(IDS_SCAN_REMAININGs, FormatScanTime(*remaining));
+    }
     CWinDirStatModel::Get()->SetScanTitlePrefix(titlePrefix);
 }
 
@@ -468,6 +491,7 @@ void CMainFrame::DestroyProgress()
 
     m_workingItem = nullptr;
     m_progressVisible = false;
+    m_scanFinalizing = false;
     UpdatePaneText();
 }
 
@@ -577,7 +601,6 @@ void CMainFrame::SavePersistentAttributes() const
     COptions::ShowToolBar = (m_wndToolBar.GetStyle() & WS_VISIBLE) != 0;
     COptions::ShowStatusBar = (m_wndStatusBar.GetStyle() & WS_VISIBLE) != 0;
     COptions::ShowFileTypes = GetExtensionView()->IsShowTypes();
-    COptions::ShowVisualization = IsVisualizationShown();
 }
 
 void CMainFrame::OnEndSession(const bool ending) const
@@ -595,18 +618,14 @@ void CMainFrame::PostNcDestroy()
 
 bool CMainFrame::OnCreateClient()
 {
-    // The splitters and views persist; RebuildLayout arranges the views for the selected layout.
-    if (!m_splitter.CreateStatic(this, CSplitterWnd::Orientation::Horizontal) ||
-        !m_subSplitter.CreateStatic(&m_splitter, CSplitterWnd::Orientation::Vertical)) return false;
+    if (!m_splitter.CreateStatic(this, CSplitterWnd::Orientation::Vertical)) return false;
 
     // Publish the views only once all of them exist.
-    auto visualizationPane = std::make_unique<CVisualizationPane>();
     auto fileTabbedView = std::make_unique<CFileTabbedView>();
     auto extensionView = std::make_unique<CExtensionView>();
-    for (CWnd* view : std::initializer_list<CWnd*>{ visualizationPane.get(), fileTabbedView.get(), extensionView.get() })
+    for (CWnd* view : std::initializer_list<CWnd*>{ fileTabbedView.get(), extensionView.get() })
         if (!view->Create(nullptr, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS, CRect(), &m_splitter, 0))
             return false;
-    m_visualizationPane = std::move(visualizationPane);
     m_fileTabbedView = std::move(fileTabbedView);
     m_extensionView = std::move(extensionView);
 
@@ -619,8 +638,8 @@ bool CMainFrame::OnCreateClient()
 
 void CMainFrame::UpdateAllPanes(CWnd* sender, const MODEL_CHANGE change, CItem* item) const
 {
-    const std::array<CWinDirStatPane*, 3> panes{
-        m_fileTabbedView.get(), m_extensionView.get(), m_visualizationPane.get()
+    const std::array<CWinDirStatPane*, 2> panes{
+        m_fileTabbedView.get(), m_extensionView.get()
     };
     for (CWinDirStatPane* pane : panes)
     {
@@ -669,89 +688,18 @@ bool CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 
 void CMainFrame::ExpandFileTabbedView()
 {
-    // Expand the file pane through its actual splitter ancestors.
-    CWnd* pane = GetFileTabbedView();
-    for (CWnd* parent = pane->GetParent<CWnd>(); parent != nullptr && parent->IsSplitterWindow();
-        pane = parent, parent = pane->GetParent<CWnd>())
-    {
-        static_cast<CWdsSplitterWnd*>(parent)->SetSplitterPos(
-            pane->GetDlgCtrlID() == CSplitterWnd::PaneId(0) ? 1.0 : 0.0);
-    }
-}
-
-void CMainFrame::RestoreSplitterPositions()
-{
-    const auto& layout = CLayoutPopup::CurrentLayout();
-    m_splitter.RestoreSplitterPos(layout.ratio);
-    m_subSplitter.RestoreSplitterPos(layout.subRatio);
+    m_splitter.SetSplitterPos(GetFileTabbedView()->GetDlgCtrlID() == CSplitterWnd::PaneId(0) ? 1.0 : 0.0);
 }
 
 void CMainFrame::ApplyPaneVisibility(const bool restoreDuringScan)
 {
-    if (!restoreDuringScan && CWinDirStatModel::Get()->IsScanRunning())
+    if ((!restoreDuringScan && CWinDirStatModel::Get()->IsScanRunning()) || !GetExtensionView()->IsShowTypes())
     {
         ExpandFileTabbedView();
         return;
     }
 
-    RestoreSplitterPositions();
-    const bool showFileTypes = GetExtensionView()->IsShowTypes();
-    const bool showVisualization = IsVisualizationShown();
-    if (!showFileTypes && !showVisualization)
-    {
-        ExpandFileTabbedView();
-        return;
-    }
-    // Collapse hidden panes in their owning splitter.
-    const auto collapse = [](const CWinDirStatPane* pane)
-    {
-        pane->GetParent<CWdsSplitterWnd>()->SetSplitterPos(
-            pane->GetDlgCtrlID() == CSplitterWnd::PaneId(0) ? 0.0 : 1.0);
-    };
-    if (!showFileTypes) collapse(GetExtensionView());
-    if (!showVisualization) collapse(GetVisualizationPane());
-}
-
-void CMainFrame::RestoreVisualizationPane(const bool force)
-{
-    if (force) ShowVisualization(true);
-    if (!IsVisualizationShown()) return;
-
-    ApplyPaneVisibility();
-    GetActiveVisualization()->RedrawWindow();
-}
-
-void CMainFrame::ShowVisualization(const bool show) const
-{
-    m_visualizationPane->ShowVisualization(show);
-    COptions::ShowVisualization = show;
-}
-
-bool CMainFrame::IsVisualizationShown() const
-{
-    return m_visualizationPane->IsVisualizationShown();
-}
-
-CWinDirStatPane* CMainFrame::GetVisualizationPane() const
-{
-    return m_visualizationPane.get();
-}
-
-CWinDirStatPane* CMainFrame::GetActiveVisualization() const
-{
-    return m_visualizationPane->GetActiveView();
-}
-
-LRESULT CMainFrame::OnEnterSizeMove(WPARAM, LPARAM) const
-{
-    GetVisualizationPane()->SuspendRecalculationDrawing(true);
-    return 0;
-}
-
-LRESULT CMainFrame::OnExitSizeMove(WPARAM, LPARAM) const
-{
-    GetVisualizationPane()->SuspendRecalculationDrawing(false);
-    return 0;
+    m_splitter.RestoreSplitterPos(CLayoutPopup::CurrentLayout().ratio);
 }
 
 void CMainFrame::OnTimer(const UINT_PTR nIDEvent)
@@ -785,11 +733,12 @@ void CMainFrame::OnTimer(const UINT_PTR nIDEvent)
         UpdatePaneText();
     }
 
-    // UI updates that do need to be processed frequently
-    if (!CWinDirStatModel::Get()->IsRootDone() && !IsScanSuspended())
+    // Finalization can outlast the filesystem workers.
+    const bool scanning = !CWinDirStatModel::Get()->IsRootDone() && !IsScanSuspended();
+    if (scanning || m_scanFinalizing) UpdateProgress();
+
+    if (scanning)
     {
-        // Update the visual progress at the bottom of the screen
-        UpdateProgress();
 
         // Repaint progress independently of the less frequent row sort.
         if (doInfrequentUpdate) CFileTreeControl::Get()->SortItems();
@@ -809,6 +758,8 @@ void CMainFrame::OnTimer(const UINT_PTR nIDEvent)
     }
 
     CWinDirStatModel::Get()->RunPendingHeapCleanup();
+    if (::IsWindowVisible(Handle())) SmartStorageUpdater::Poll(*this,
+        ::IsWindowEnabled(Handle()) && !CWinDirStatModel::Get()->IsScanRunning());
 
     CallDefaultHandler();
 }

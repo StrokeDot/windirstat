@@ -74,9 +74,12 @@
 	<Target Name="GetGitCount" DependsOnTargets="GetGitRevision">
 		<Exec Command="&quot;$(GitExecutableFullPath)&quot; rev-list --count --all"
 			WorkingDirectory="$(MSBuildThisFileDirectory)" EchoOff="true" ConsoleToMsBuild="true"
-			Condition="'$(GitExecutableFullPath)' != '' and '$(GitRevision)' != ''">
+			Condition="'$(GitExecutableFullPath)' != '' and '$(GitRevision)' != '' and '$(SmartStorageReleaseBuild)' == ''">
 			<Output TaskParameter="ConsoleOutput" PropertyName="GitCount" />
 		</Exec>
+		<PropertyGroup Condition="'$(SmartStorageReleaseBuild)' != ''">
+			<GitCount>$(SmartStorageReleaseBuild)</GitCount>
+		</PropertyGroup>
 		<Message Importance="high" Text="Retrieved for %24(GitCount) = '$(GitCount)'." Condition="'$(GitCount)' != ''" />
 		<ItemGroup Condition="'$(GitCount)' != ''">
 			<ClCompile>

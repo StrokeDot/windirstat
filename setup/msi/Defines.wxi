@@ -24,7 +24,7 @@
     <?define Contact =                  "https://github.com/StrokeDot"?>
     <?define AboutLink =                "https://github.com/StrokeDot/windirstat"?>
     <?define HelpLink =                 "https://github.com/StrokeDot/windirstat"?>
-    <?define UpdateLink =               "https://github.com/StrokeDot/windirstat"?>
+    <?define UpdateLink =               "https://github.com/StrokeDot/windirstat/releases"?>
     <?define ReadMeLink =               "https://github.com/StrokeDot/windirstat"?>
     <?define IconFilePath =             "..\..\windirstat\res\WinDirStat.ico" ?>
 
@@ -45,9 +45,5 @@
     <?endif ?>
     <!-- Default Registry Key, in which most registry settings are saved. -->
     <?define ProductRegKeyPath = "SOFTWARE\StrokeDot\SmartStorage"?>
-    <?if $(var.RELTYPE) = PRODUCTION ?>
-	<?define AllowSameVersionUpgrades = "no"?>
-    <?else ?>
-	<?define AllowSameVersionUpgrades = "yes"?>
-    <?endif ?>
+    <?define AllowSameVersionUpgrades = "no"?>
 </Include>

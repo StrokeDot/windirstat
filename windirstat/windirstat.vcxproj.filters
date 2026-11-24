@@ -118,9 +118,6 @@
     <ClInclude Include="Dialogs\SelectDrivesDlg.h">
       <Filter>Header Files\User Interface\Dialogs</Filter>
     </ClInclude>
-    <ClInclude Include="Pages\PageTreeMap.h">
-      <Filter>Header Files\User Interface\Pages</Filter>
-    </ClInclude>
     <ClInclude Include="Pages\PageAdvanced.h">
       <Filter>Header Files\User Interface\Pages</Filter>
     </ClInclude>
@@ -148,12 +145,6 @@
     <ClInclude Include="Views\WinDirStatPane.h">
       <Filter>Header Files\User Interface\Views</Filter>
     </ClInclude>
-    <ClInclude Include="Views\GraphView.h">
-      <Filter>Header Files\User Interface\Views</Filter>
-    </ClInclude>
-    <ClInclude Include="Views\VisualizationPane.h">
-      <Filter>Header Files\User Interface\Views</Filter>
-    </ClInclude>
     <ClInclude Include="Views\StorageAnalyticsView.h">
       <Filter>Header Files\User Interface\Views</Filter>
     </ClInclude>
@@ -173,12 +164,6 @@
       <Filter>Header Files\User Interface\Controls</Filter>
     </ClInclude>
     <ClInclude Include="Controls\HilbertMooreTreeMap.h">
-      <Filter>Header Files\User Interface\Controls</Filter>
-    </ClInclude>
-    <ClInclude Include="Controls\FlameGraph.h">
-      <Filter>Header Files\User Interface\Controls</Filter>
-    </ClInclude>
-    <ClInclude Include="Controls\Sunburst.h">
       <Filter>Header Files\User Interface\Controls</Filter>
     </ClInclude>
     <ClInclude Include="Controls\TreeListControl.h">
@@ -207,15 +192,6 @@
     </ClInclude>
     <ClInclude Include="Controls\ColorButton.h">
       <Filter>Header Files\User Interface\Controls</Filter>
-    </ClInclude>
-    <ClInclude Include="Views\TreeMapView.h">
-      <Filter>Header Files\User Interface\Views</Filter>
-    </ClInclude>
-    <ClInclude Include="Views\FlameGraphView.h">
-      <Filter>Header Files\User Interface\Views</Filter>
-    </ClInclude>
-    <ClInclude Include="Views\SunburstView.h">
-      <Filter>Header Files\User Interface\Views</Filter>
     </ClInclude>
     <ClInclude Include="Dialogs\SearchDlg.h">
       <Filter>Header Files\User Interface\Dialogs</Filter>
@@ -417,9 +393,6 @@
     <ClCompile Include="Pages\PageShared.cpp">
       <Filter>Source Files\User Interface\Pages</Filter>
     </ClCompile>
-    <ClCompile Include="Pages\PageTreeMap.cpp">
-      <Filter>Source Files\User Interface\Pages</Filter>
-    </ClCompile>
     <ClCompile Include="Views\FileTreeView.cpp">
       <Filter>Source Files\User Interface\Views</Filter>
     </ClCompile>
@@ -429,22 +402,7 @@
     <ClCompile Include="Views\WinDirStatPane.cpp">
       <Filter>Source Files\User Interface\Views</Filter>
     </ClCompile>
-    <ClCompile Include="Views\GraphView.cpp">
-      <Filter>Source Files\User Interface\Views</Filter>
-    </ClCompile>
-    <ClCompile Include="Views\VisualizationPane.cpp">
-      <Filter>Source Files\User Interface\Views</Filter>
-    </ClCompile>
     <ClCompile Include="Views\StorageAnalyticsView.cpp">
-      <Filter>Source Files\User Interface\Views</Filter>
-    </ClCompile>
-    <ClCompile Include="Views\TreeMapView.cpp">
-      <Filter>Source Files\User Interface\Views</Filter>
-    </ClCompile>
-    <ClCompile Include="Views\FlameGraphView.cpp">
-      <Filter>Source Files\User Interface\Views</Filter>
-    </ClCompile>
-    <ClCompile Include="Views\SunburstView.cpp">
       <Filter>Source Files\User Interface\Views</Filter>
     </ClCompile>
     <ClCompile Include="Views\FileTabbedView.cpp">
@@ -460,12 +418,6 @@
       <Filter>Source Files\User Interface\Controls</Filter>
     </ClCompile>
     <ClCompile Include="Controls\HilbertMooreTreeMap.cpp">
-      <Filter>Source Files\User Interface\Controls</Filter>
-    </ClCompile>
-    <ClCompile Include="Controls\FlameGraph.cpp">
-      <Filter>Source Files\User Interface\Controls</Filter>
-    </ClCompile>
-    <ClCompile Include="Controls\Sunburst.cpp">
       <Filter>Source Files\User Interface\Controls</Filter>
     </ClCompile>
     <ClCompile Include="Controls\TreeListControl.cpp">

@@ -11,13 +11,13 @@
 #include "FileTabbedView.h"
 #include "Dialogs/ProgressDlg.h"
 #include "LayoutPopup.h"
+#include "ScanTiming.h"
 
 class CWdsSplitterWnd;
 class CMainFrame;
 
 class CFileTreeView;
 class CExtensionView;
-class CVisualizationPane;
 
 //
 // The "logical focus" can be
@@ -91,7 +91,6 @@ public:
 
 protected:
     bool PreCreateWindow(CREATESTRUCT& cs) override;
-    void OnTrackingChanged(bool tracking) override;
 
     struct PaneTracking
     {
@@ -163,31 +162,23 @@ public:
     void InitialShowWindow();
     void InvokeInMessageThread(std::function<void()> callback) const;
 
-    void RestoreVisualizationPane(bool force = false);
     void ExpandFileTabbedView();
-    void RestoreSplitterPositions();
     void ApplyPaneVisibility(bool restoreDuringScan = false);
 
     // The main panes; the splitters only arrange them
     std::unique_ptr<CFileTabbedView> m_fileTabbedView;
     std::unique_ptr<CExtensionView> m_extensionView;
-    std::unique_ptr<CVisualizationPane> m_visualizationPane;
     CFileTreeView* GetFileTreeView() const
     {
         return static_cast<CFileTreeView*>(m_fileTabbedView->GetPane(FileTab::Tree));
     }
     CFileTabbedView* GetFileTabbedView() const { return m_fileTabbedView.get(); }
     CExtensionView* GetExtensionView() const { return m_extensionView.get(); }
-    GraphPane GetGraphPaneType() const;
-    void SelectGraphPane(GraphPane pane);
-    void ShowVisualization(bool show) const;
-    bool IsVisualizationShown() const;
-    CWinDirStatPane* GetVisualizationPane() const;
-    CWinDirStatPane* GetActiveVisualization() const;
 
     void CreateProgress(ULONGLONG range);
     void UpdateProgressRange(ULONGLONG range);
     void SetProgressComplete();
+    void SetProgressFinalizing();
     void SuspendState(bool suspend);
     bool IsScanSuspended() const { return m_scanSuspend; }
 
@@ -215,6 +206,7 @@ public:
 
     UINT_PTR m_timer = 0;           // Timer for updating the display
     bool m_progressVisible = false; // True while progress must be shown (either pacman or progress bar)
+    bool m_scanFinalizing = false;
     bool m_scanSuspend = false;     // True if the scan has been suspended
     bool m_placementRestored = false;
     bool m_fontChangePending = false;
@@ -222,8 +214,8 @@ public:
     ULONGLONG m_progressRange = 0;  // Progress range. A range of 0 means Pacman should be used.
     ULONGLONG m_progressPos = 0;    // Progress position (<= progressRange, or an item count when m_progressRange == 0)
     CItem* m_workingItem = nullptr;
+    ScanTiming m_scanTiming;
 
-    CWdsSplitterWnd m_subSplitter{ COptions::SubSplitterPos.Ptr() }; // Nested splitter holding two of the panes
     CWdsSplitterWnd m_splitter{ COptions::MainSplitterPos.Ptr() };    // Holds the nested splitter and the remaining pane
     CLayoutPopup m_layoutPopup;                                        // Floating layout-picker popup
 
@@ -259,33 +251,21 @@ protected:
     int OnCreate(LPCREATESTRUCT lpCreateStruct);
     void OnSetFocus(WindowRef pOldWnd);
     void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
-    LRESULT OnEnterSizeMove(WPARAM, LPARAM) const;
-    LRESULT OnExitSizeMove(WPARAM, LPARAM) const;
     LRESULT OnCallbackRequest(WPARAM, LPARAM lParam);
     void OnTimer(UINT_PTR nIDEvent);
     void OnClose();
     void OnInitMenuPopup(MenuRef pPopupMenu, UINT nIndex, bool bSysMenu);
     LRESULT OnMenuCommand(WPARAM position, LPARAM menuHandle);
     void OnSize(UINT nType, int cx, int cy);
-    void OnUpdateViewShowVisualization(CCmdUI* pCmdUI) const;
     void OnUpdateViewTreeMapSize(CCmdUI* pCmdUI);
     void OnUpdateViewAbsolutePercentages(CCmdUI* pCmdUI);
     void OnUpdateViewShowFileTypes(CCmdUI* pCmdUI) const;
     void OnUpdateViewGroupUnregisteredTypes(CCmdUI* pCmdUI) const;
     void OnUpdateViewShowWatcher(CCmdUI* pCmdUI) const;
-    void OnViewShowVisualization();
-    void OnViewTreeMapStyle(UINT commandId);
-    void OnUpdateViewTreeMapStyle(CCmdUI* pCmdUI) const;
-    void OnViewGraphPreset(UINT commandId);
-    void OnUpdateViewGraphPreset(CCmdUI* pCmdUI) const;
-    void OnViewGraphPane(UINT commandId);
-    void OnUpdateViewGraphPane(CCmdUI* pCmdUI) const;
     void OnViewTreeMapSize(UINT commandId);
     void OnViewAbsolutePercentages() const;
     void OnViewShowFileTypes();
     void OnViewGroupUnregisteredTypes() const;
-    void OnViewTreeMapOverlay(UINT commandId) const;
-    void OnUpdateViewTreeMapOverlay(CCmdUI* pCmdUI) const;
     void OnViewAllFiles() const { GetFileTabbedView()->SetActiveTab(FileTab::Tree); }
     void OnViewLargestFiles() const { GetFileTabbedView()->SetActiveTab(FileTab::Largest); }
     void OnViewDuplicateFiles() const { GetFileTabbedView()->SetActiveTab(FileTab::Duplicates); }
@@ -306,6 +286,8 @@ protected:
     void OnUpdateWatcherAutoScroll(CCmdUI* pCmdUI);
     void OnWatcherClear();
     void OnUpdateWatcherClear(CCmdUI* pCmdUI);
+    void OnViewRecentFiles();
+    void OnHelpCheckForUpdates();
     void OnToolsRecovery();
     void OnUpdateToolsRecovery(CCmdUI* pCmdUI) const;
     void OnToolsTab(UINT commandId) const;
@@ -387,30 +369,16 @@ inline std::span<const RouteEntry> CMainFrame::Routes()
         Route::Command<&OnConfigure>(ID_CONFIGURE),
         Route::Command<&OnViewShowFileTypes>(ID_VIEW_SHOWFILETYPES),
         Route::Command<&OnViewGroupUnregisteredTypes>(ID_VIEW_GROUP_TYPES),
-        Route::Command<&OnViewShowVisualization>(ID_VIEW_SHOWVISUALIZATION),
-        Route::Command<&OnViewTreeMapStyle>(ID_VIEW_TREEMAP_ROWS, ID_VIEW_TREEMAP_MOORE),
-        Route::Command<&OnViewGraphPreset>(ID_VIEW_GRAPH_PRESET_CLASSIC, ID_VIEW_GRAPH_PRESET_CUSTOM),
-        Route::Command<&OnViewGraphPane>(ID_VIEW_FLAMEGRAPH),
-        Route::Command<&OnViewGraphPane>(ID_VIEW_SUNBURST),
         Route::Command<&OnViewTreeMapSize>(ID_TREEMAP_LOGICAL_SIZE, ID_TREEMAP_PHYSICAL_SIZE),
         Route::Command<&OnViewAbsolutePercentages>(ID_VIEW_ABSOLUTE_PERCENTAGES),
-        Route::Window<&OnEnterSizeMove>(WM_ENTERSIZEMOVE),
-        Route::Window<&OnExitSizeMove>(WM_EXITSIZEMOVE),
         Route::Window<&OnCallbackRequest>(WM_CALLBACKUI),
         Route::Window<&OnUahDrawMenu>(DarkMode::WM_UAHDRAWMENU),
         Route::Window<&OnUahDrawMenu>(DarkMode::WM_UAHDRAWMENUITEM),
         Route::Registered<&OnTaskButtonCreated>(s_TaskBarMessage),
-        Route::Update<&OnUpdateViewShowVisualization>(ID_VIEW_SHOWVISUALIZATION),
-        Route::Update<&OnUpdateViewTreeMapStyle>(ID_VIEW_TREEMAP_ROWS, ID_VIEW_TREEMAP_MOORE),
-        Route::Update<&OnUpdateViewGraphPreset>(ID_VIEW_GRAPH_PRESET_CLASSIC, ID_VIEW_GRAPH_PRESET_CUSTOM),
-        Route::Update<&OnUpdateViewGraphPane>(ID_VIEW_FLAMEGRAPH),
-        Route::Update<&OnUpdateViewGraphPane>(ID_VIEW_SUNBURST),
         Route::Update<&OnUpdateViewShowFileTypes>(ID_VIEW_SHOWFILETYPES),
         Route::Update<&OnUpdateViewGroupUnregisteredTypes>(ID_VIEW_GROUP_TYPES),
         Route::Update<&OnUpdateViewTreeMapSize>(ID_TREEMAP_LOGICAL_SIZE, ID_TREEMAP_PHYSICAL_SIZE),
         Route::Update<&OnUpdateViewAbsolutePercentages>(ID_VIEW_ABSOLUTE_PERCENTAGES),
-        Route::Command<&OnViewTreeMapOverlay>(ID_TREEMAP_SHOW_EXTENSIONS, ID_TREEMAP_SHOW_FOLDER_FRAMES),
-        Route::Update<&OnUpdateViewTreeMapOverlay>(ID_TREEMAP_SHOW_EXTENSIONS, ID_TREEMAP_SHOW_FOLDER_FRAMES),
         Route::Update<&OnUpdateViewShowWatcher>(ID_TOOLS_WATCHER),
         Route::Window<&OnClose>(WM_CLOSE),
         Route::Window<&OnEndSession>(WM_ENDSESSION),
@@ -449,6 +417,8 @@ inline std::span<const RouteEntry> CMainFrame::Routes()
         Route::Update<&OnUpdateWatcherAutoScroll>(ID_WATCHER_AUTOSCROLL),
         Route::Command<&OnWatcherClear>(ID_WATCHER_CLEAR),
         Route::Update<&OnUpdateWatcherClear>(ID_WATCHER_CLEAR),
+        Route::Command<&OnViewRecentFiles>(ID_VIEW_RECENT_FILES),
+        Route::Command<&OnHelpCheckForUpdates>(ID_HELP_CHECK_UPDATES),
         Route::Command<&OnToolsRecovery>(ID_TOOLS_RECOVERY),
         Route::Update<&OnUpdateToolsRecovery>(ID_TOOLS_RECOVERY),
         Route::Command<&OnToolsTab>(ID_TOOLS_PERMISSIONS),

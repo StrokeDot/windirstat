@@ -5,18 +5,28 @@
 // Distributed WITHOUT ANY WARRANTY; see LICENSE.md for details.
 
 #include "pch.h"
+#include "SmartStorageUpdater.h"
 #include "FinderRemote.h"
 #include "Filtering.h"
-#include "TreeMap.h"
-#include "VisualizationPane.h"
 #include "FileTabbedView.h"
 #include "FileTreeView.h"
 #include "DrawTextCache.h"
 #include "ExtensionView.h"
 #include "ProgressDlg.h"
 #include "RecoveryDlg.h"
+#include "RecentFilesDlg.h"
 
 static const int UdcMenuTag = 0;
+
+void CMainFrame::OnHelpCheckForUpdates()
+{
+    SmartStorageUpdater::CheckNow(*this);
+}
+
+void CMainFrame::OnViewRecentFiles()
+{
+    if (ShowRecentFilesDialog(this)) OnToolsRecovery();
+}
 
 void CMainFrame::OnToolsRecovery()
 {
@@ -336,16 +346,8 @@ void CMainFrame::UpdatePaneText()
     ULONGLONG size = MAXULONGLONG;
     bool logicalSize = COptions::TreeMapUseLogical;
 
-    // Allow the active visualization to override the selection text while hovered
-    if (const auto hoverInfo = GetActiveVisualization()->GetHoverInfo(); !hoverInfo.path.empty())
-    {
-        fileSelectionText = hoverInfo.path;
-        size = hoverInfo.size;
-        logicalSize |= hoverInfo.logicalSize;
-    }
-
-    // Only get the data if the scan model is not actively updating
-    else if (CWinDirStatModel::Get()->IsScanSettled())
+    // Only get the data if the scan model is not actively updating.
+    if (CWinDirStatModel::Get()->IsScanSettled())
     {
         if (focus != LF_EXTLIST)
         {
@@ -426,11 +428,6 @@ void CMainFrame::LayoutProgress()
 
 /////////////////////////////////////////////////////////////////////////////
 
-void CMainFrame::OnUpdateViewShowVisualization(CCmdUI* pCmdUI) const
-{
-    pCmdUI->SetCheck(IsVisualizationShown());
-}
-
 void CMainFrame::OnUpdateViewTreeMapSize(CCmdUI* pCmdUI)
 {
     pCmdUI->Enable(!CWinDirStatModel::Get()->IsScanRunning());
@@ -459,104 +456,6 @@ void CMainFrame::OnUpdateViewShowWatcher(CCmdUI* pCmdUI) const
     pCmdUI->SetCheck(GetFileTabbedView()->IsTabVisible(FileTab::Watcher));
 }
 
-GraphPane CMainFrame::GetGraphPaneType() const
-{
-    return m_visualizationPane->GetActivePaneType();
-}
-
-void CMainFrame::SelectGraphPane(const GraphPane pane)
-{
-    // Accelerators still dispatch WM_COMMAND while the corresponding menu
-    // item is disabled. Do not switch away from the pane suspended for a scan.
-    if (CWinDirStatModel::Get()->IsScanRunning()) return;
-    if (GetGraphPaneType() == pane && IsVisualizationShown()) return;
-
-    COptions::GraphPaneStyle = EncodeGraphPane(pane);
-    m_visualizationPane->SelectPane(pane);
-    ShowVisualization(true);
-    ApplyPaneVisibility();
-}
-
-void CMainFrame::OnViewShowVisualization()
-{
-    ShowVisualization(!IsVisualizationShown());
-    ApplyPaneVisibility();
-}
-
-static_assert(ID_VIEW_TREEMAP_ROWS + static_cast<int>(TreeMapLayout::Style::Squarified)
-        == ID_VIEW_TREEMAP_SQUARIFIED
-    && ID_VIEW_TREEMAP_ROWS + static_cast<int>(TreeMapLayout::Style::Hilbert) == ID_VIEW_TREEMAP_HILBERT
-    && ID_VIEW_TREEMAP_ROWS + static_cast<int>(TreeMapLayout::Style::Moore) == ID_VIEW_TREEMAP_MOORE);
-
-void CMainFrame::OnViewTreeMapStyle(const UINT commandId)
-{
-    if (CWinDirStatModel::Get()->IsScanRunning()) return;
-
-    const int styleValue = commandId - ID_VIEW_TREEMAP_ROWS;
-    assert(styleValue >= static_cast<int>(TreeMapLayout::Style::Rows)
-        && styleValue <= static_cast<int>(TreeMapLayout::Style::Moore));
-    CTreeMap::Options options = COptions::TreeMapOptions;
-    options.style = static_cast<TreeMapLayout::Style>(styleValue);
-    COptions::SetTreeMapOptions(options);
-    SelectGraphPane(GraphPane::TreeMap);
-}
-
-void CMainFrame::OnUpdateViewTreeMapStyle(CCmdUI* pCmdUI) const
-{
-    pCmdUI->Enable(!CWinDirStatModel::Get()->IsScanRunning());
-    const auto style = static_cast<TreeMapLayout::Style>(pCmdUI->m_nID - ID_VIEW_TREEMAP_ROWS);
-    pCmdUI->SetRadio(GetGraphPaneType() == GraphPane::TreeMap
-        && COptions::TreeMapOptions.style == style);
-}
-
-static_assert(ID_VIEW_GRAPH_PRESET_CLASSIC + std::to_underlying(CTreeMap::Preset::Calm) == ID_VIEW_GRAPH_PRESET_CALM
-    && ID_VIEW_GRAPH_PRESET_CLASSIC + std::to_underlying(CTreeMap::Preset::Flat) == ID_VIEW_GRAPH_PRESET_FLAT
-    && ID_VIEW_GRAPH_PRESET_CLASSIC + std::to_underlying(CTreeMap::Preset::Pastel) == ID_VIEW_GRAPH_PRESET_PASTEL
-    && ID_VIEW_GRAPH_PRESET_CLASSIC + std::to_underlying(CTreeMap::Preset::HighContrast)
-        == ID_VIEW_GRAPH_PRESET_HIGH_CONTRAST);
-
-void CMainFrame::OnViewGraphPreset(const UINT commandId)
-{
-    if (CWinDirStatModel::Get()->IsScanRunning()) return;
-
-    const auto preset = static_cast<CTreeMap::Preset>(commandId - ID_VIEW_GRAPH_PRESET_CLASSIC);
-    CTreeMap::Options options = COptions::TreeMapOptions;
-    if (commandId == ID_VIEW_GRAPH_PRESET_CUSTOM)
-    {
-        const auto custom = COptions::GetCustomTreeMapPreset();
-        if (!custom) return;
-        options.SetAppearance(*custom);
-    }
-    else options.SetAppearance(CTreeMap::GetPreset(preset));
-    COptions::SetTreeMapOptions(options);
-}
-
-void CMainFrame::OnUpdateViewGraphPreset(CCmdUI* pCmdUI) const
-{
-    const bool custom = pCmdUI->m_nID == ID_VIEW_GRAPH_PRESET_CUSTOM;
-    pCmdUI->Enable(!CWinDirStatModel::Get()->IsScanRunning()
-        && (!custom || COptions::GetCustomTreeMapPreset().has_value()));
-    const auto preset = static_cast<CTreeMap::Preset>(pCmdUI->m_nID - ID_VIEW_GRAPH_PRESET_CLASSIC);
-    const auto current = CTreeMap::GetMatchingPreset(COptions::TreeMapOptions);
-    pCmdUI->SetRadio(custom ? !current : current == preset);
-}
-
-static GraphPane GraphPaneForCommand(const UINT commandId)
-{
-    return commandId == ID_VIEW_FLAMEGRAPH ? GraphPane::FlameGraph : GraphPane::Sunburst;
-}
-
-void CMainFrame::OnViewGraphPane(const UINT commandId)
-{
-    SelectGraphPane(GraphPaneForCommand(commandId));
-}
-
-void CMainFrame::OnUpdateViewGraphPane(CCmdUI* pCmdUI) const
-{
-    pCmdUI->Enable(!CWinDirStatModel::Get()->IsScanRunning());
-    pCmdUI->SetRadio(GetGraphPaneType() == GraphPaneForCommand(pCmdUI->m_nID));
-}
-
 static void SortItemRecursive(CItem* item)
 {
     if (item == nullptr || item->IsLeaf()) return;
@@ -572,7 +471,7 @@ void CMainFrame::OnViewTreeMapSize(const UINT commandId)
     const bool logical = commandId == ID_TREEMAP_LOGICAL_SIZE;
     if (COptions::TreeMapUseLogical == logical) return;
 
-    // Reorder the tree once when the visualization's size basis changes.
+    // Reorder the tree once when the size basis changes.
     COptions::TreeMapUseLogical = logical;
     if (CItem* root = CWinDirStatModel::Get()->GetRootItem())
     {
@@ -604,23 +503,6 @@ void CMainFrame::OnViewGroupUnregisteredTypes() const
     CWinDirStatModel::Get()->RebuildExtensionData();
     GetExtensionView()->OnUpdate(nullptr, MODEL_CHANGE_NONE, nullptr);
     CWinDirStatModel::Get()->NotifyPanes(MODEL_CHANGE_TREEMAP_STYLE);
-}
-
-void CMainFrame::OnViewTreeMapOverlay(const UINT commandId) const
-{
-    if (GetGraphPaneType() != GraphPane::TreeMap) return;
-    const bool extensions = commandId == ID_TREEMAP_SHOW_EXTENSIONS;
-    auto& setting = extensions ? COptions::TreeMapShowExtensions : COptions::TreeMapShowFolderFrames;
-    auto& visible = extensions ? COptions::TreeMapOptions.showExtensions : COptions::TreeMapOptions.showFolderFrames;
-    visible = setting = !setting;
-    CWinDirStatModel::Get()->NotifyPanes(MODEL_CHANGE_TREEMAP_STYLE);
-}
-
-void CMainFrame::OnUpdateViewTreeMapOverlay(CCmdUI* pCmdUI) const
-{
-    pCmdUI->Enable(GetGraphPaneType() == GraphPane::TreeMap && !CWinDirStatModel::Get()->IsScanRunning());
-    pCmdUI->SetCheck(pCmdUI->m_nID == ID_TREEMAP_SHOW_EXTENSIONS ? COptions::TreeMapOptions.showExtensions :
-        COptions::TreeMapOptions.showFolderFrames);
 }
 
 static void PaintWatcherAutoScroll(Gdiplus::Graphics& g, const bool enabled)
@@ -687,8 +569,6 @@ void CMainFrame::RebuildToolBar(const bool rebuildButtons)
         { ID_CLEANUP_DELETE_BIN,      IDS_CLEANUP_DELETE_BIN,      Icons::PaintDeleteBin},
         { ID_CLEANUP_DELETE,          IDS_CLEANUP_DELETE,          Icons::PaintDelete},
         { ID_SEPARATOR,               {},{}},
-        { ID_TREEMAP_ZOOMIN,          IDS_TREEMAP_ZOOMIN,          [](auto& g) { Icons::PaintMagnifier(g, true);}},
-        { ID_TREEMAP_ZOOMOUT,         IDS_TREEMAP_ZOOMOUT,         [](auto& g){ Icons::PaintMagnifier(g, false);}},
         { ID_SEPARATOR,               {},{}},
         { ID_VIEW_WINDOW_LAYOUT,      IDS_WINDOW_LAYOUT,           Icons::PaintWindowLayout},
         { ID_SEPARATOR,               {},{}},
@@ -1071,35 +951,18 @@ void CMainFrame::OnViewWindowLayout()
 
 void CMainFrame::BuildSplitterLayout()
 {
-    // The splitters persist; a layout only changes their orientations and the nested splitter's slot.
     const auto& layout = CLayoutPopup::CurrentLayout();
     m_splitter.SetOrientation(layout.orientation);
-    m_subSplitter.SetOrientation(layout.subOrientation);
-    SetWindowLongPtrW(m_subSplitter.Handle(), GWLP_ID, m_splitter.PaneId(layout.subPane));
     m_splitter.ClearPaneTracking();
-    m_subSplitter.ClearPaneTracking();
 
-    // Attach each stable view and its visibility action to the owning splitter.
-    const std::array<CWinDirStatPane*, 3> views{ GetFileTabbedView(), GetExtensionView(), GetVisualizationPane() };
-    for (const auto [slot, viewType] : std::views::enumerate(layout.views))
+    const int extensionPane = layout.views[0] == VT_FILETYPES ? 0 : 1;
+    SetWindowLongPtrW(GetFileTabbedView()->Handle(), GWLP_ID, m_splitter.PaneId(1 - extensionPane));
+    SetWindowLongPtrW(GetExtensionView()->Handle(), GWLP_ID, m_splitter.PaneId(extensionPane));
+    m_splitter.TrackPane(extensionPane, [this](const bool visible)
     {
-        auto& splitter = slot == 0 ? m_splitter : m_subSplitter;
-        const int pane = slot == 0 ? 1 - layout.subPane : static_cast<int>(slot) - 1;
-        const HWND window = views[viewType]->Handle();
-        SetParent(window, splitter.Handle());
-        SetWindowLongPtrW(window, GWLP_ID, splitter.PaneId(pane));
-        if (viewType == VT_ALLFILES) continue;
-
-        splitter.TrackPane(pane, [this, viewType](const bool visible)
-        {
-            if (viewType == VT_VISUALIZATION) ShowVisualization(visible);
-            else
-            {
-                GetExtensionView()->ShowTypes(visible);
-                COptions::ShowFileTypes = visible;
-            }
-        }, [this] { ApplyPaneVisibility(); });
-    }
+        GetExtensionView()->ShowTypes(visible);
+        COptions::ShowFileTypes = visible;
+    }, [this] { ApplyPaneVisibility(); });
 }
 
 void CMainFrame::RebuildLayout(const bool resetPositions)
@@ -1107,22 +970,18 @@ void CMainFrame::RebuildLayout(const bool resetPositions)
     if (resetPositions)
     {
         COptions::MainSplitterPos = -1.0;
-        COptions::SubSplitterPos  = -1.0;
     }
 
     BuildSplitterLayout();
     m_splitter.SetStorage(COptions::MainSplitterPos.Ptr());
-    m_subSplitter.SetStorage(COptions::SubSplitterPos.Ptr());
 
-    // The reused splitters may keep their size, so lay out their reassigned panes explicitly.
+    // Lay out the reassigned panes even when the splitter keeps its size.
     UpdateLayout();
     m_splitter.UpdateLayout();
-    m_subSplitter.UpdateLayout();
 
     ApplyPaneVisibility();
 
     DarkMode::AdjustControls(Handle());
     GetFileTabbedView()->RedrawWindow();
-    GetActiveVisualization()->RedrawWindow();
     GetExtensionView()->RedrawWindow();
 }

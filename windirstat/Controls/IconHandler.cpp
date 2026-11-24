@@ -407,13 +407,11 @@ namespace Icons
     {
         const Pen framePen(Neutral(), 4);
         g.DrawRectangle(&framePen, 4, 4, 56, 56);
-        g.DrawLine(&framePen, 4, 34, 60, 34);
-        g.DrawLine(&framePen, 36, 4, 36, 34);
+        g.DrawLine(&framePen, 36, 4, 36, 60);
 
-        const SolidBrush afBrush(C(70, 120, 200)), ftBrush(C(60, 160, 90)), tmBrush(C(200, 140, 40));
-        g.FillRectangle(&afBrush,  8,  8, 24, 22);
-        g.FillRectangle(&ftBrush, 40,  8, 16, 22);
-        g.FillRectangle(&tmBrush,  8, 38, 48, 18);
+        const SolidBrush filesBrush(C(70, 120, 200)), typesBrush(C(60, 160, 90));
+        g.FillRectangle(&filesBrush, 8, 8, 24, 48);
+        g.FillRectangle(&typesBrush, 40, 8, 16, 48);
     }
 
     void PaintCharacter(Graphics& g, const WCHAR ch, const COLORREF clr, const bool bold)

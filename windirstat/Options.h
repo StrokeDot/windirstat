@@ -38,46 +38,15 @@ enum PROCESSPRIORITY : std::uint8_t
     HIGH   = 2
 };
 
-enum class GraphPane : std::uint8_t
-{
-    TreeMap,
-    FlameGraph,
-    Sunburst,
-};
-
-// GraphPaneStyle historically stored treemap layouts (0, 1, 4, 5) alongside
-// flame graph (2) and sunburst (3). Decode those values while keeping the
-// runtime pane model independent from TreeMapLayout::Style.
-constexpr GraphPane DecodeGraphPane(const int persisted) noexcept
-{
-    if (persisted == 2) return GraphPane::FlameGraph;
-    if (persisted == 3) return GraphPane::Sunburst;
-    return GraphPane::TreeMap;
-}
-
-constexpr int EncodeGraphPane(const GraphPane pane) noexcept
-{
-    switch (pane)
-    {
-    case GraphPane::TreeMap: return 0;
-    case GraphPane::FlameGraph: return 2;
-    case GraphPane::Sunburst: return 3;
-    }
-    return 0;
-}
-
-constexpr int MaxPersistedGraphPane = 5;
-
 // Layout view types
 enum LAYOUT_VIEW_TYPE : char
 {
     VT_ALLFILES      = 0,
     VT_FILETYPES     = 1,
-    VT_VISUALIZATION = 2
 };
 
-// Window layouts offered by the layout popup; the persisted value is the card index.
-constexpr int LayoutCount = 12;
+// Retain the old layout indices for existing profiles.
+constexpr int LegacyLayoutCount = 12;
 
 struct USERDEFINEDCLEANUP
 {
@@ -226,7 +195,6 @@ public:
     inline static Setting<bool> ShowTimeSpent{ OptionsFileTree, L"ShowTimeSpent", true };
     inline static Setting<bool> ShowToolBar{ OptionsGeneral, L"ShowToolBar", true };
     inline static Setting<int> ToolBarSizePercent{ OptionsGeneral, L"ToolBarSizePercent", 0, 0, 200 };
-    inline static Setting<bool> ShowVisualization{ OptionsTreeMap, L"ShowVisualizationPane", false };
     inline static Setting<bool> ShowUnknown{ OptionsGeneral, L"ShowUnknown", false };
     inline static Setting<bool> SkipDupeDetectionCloudLinks{ OptionsGeneral,
         L"SkipDupeDetectionCloudLinks", true, CheckboxBind(IDC_SKIP_CLOUD_LINKS) };
@@ -290,8 +258,7 @@ public:
         { OptionsPerms, L"Color4", RGB(150, 0, 200) }
     };
     inline static Setting<std::wstring> PermsExcludeRegex{ OptionsPerms, L"ExcludeRegex", L"" };
-    inline static Setting<double> MainSplitterPos{ OptionsGeneral, L"MainSplitterPos", -1.0, 0.0, 1.0 };
-    inline static Setting<double> SubSplitterPos{ OptionsGeneral, L"SubSplitterPos", -1.0, 0.0, 1.0 };
+    inline static Setting<double> MainSplitterPos{ OptionsGeneral, L"ListSplitterPos", -1.0, 0.0, 1.0 };
     inline static Setting<int> ConfigPage{ OptionsGeneral, L"ConfigPage", 0 };
     inline static Setting<int> UserDefinedCleanupCount{ OptionsCleanups, L"Count", 0, 0, std::numeric_limits<int>::max() };
     inline static Setting<int> DarkMode{ OptionsGeneral, L"DarkMode", DM_ENABLED, DM_DISABLED, DM_USE_WINDOWS };
@@ -327,11 +294,10 @@ public:
     inline static Setting<int> TreeMapSaturation{ OptionsTreeMap, L"TreeMapSaturation", CTreeMap::GetDefaults().GetSaturationPercent(), 0, 100 };
     inline static Setting<int> TreeMapScaleFactor{ OptionsTreeMap, L"TreeMapScaleFactor", CTreeMap::GetDefaults().GetScaleFactorPercent(), 0, 100 };
     inline static Setting<int> TreeMapStyle{ OptionsTreeMap, L"TreeMapStyle", static_cast<int>(CTreeMap::GetDefaults().style), static_cast<int>(TreeMapLayout::Style::Rows), static_cast<int>(TreeMapLayout::Style::Moore) };
-    inline static Setting<int> GraphPaneStyle{ OptionsTreeMap, L"GraphPaneStyle", EncodeGraphPane(GraphPane::TreeMap), 0, MaxPersistedGraphPane };
     inline static Setting<int> TreeMapMaxDepth{ OptionsTreeMap, L"TreeMapMaxDepth", 6, 1, 64 };
     inline static Setting<int> FolderHistoryCount{ OptionsDriveSelect,
         L"FolderHistoryCount", 10, 0, 100, IntegerBind(IDC_FOLDER_HISTORY_COUNT) };
-    inline static Setting<int> WindowLayout{ OptionsGeneral, L"WindowLayout", 0, 0, LayoutCount - 1 };
+    inline static Setting<int> WindowLayout{ OptionsGeneral, L"WindowLayout", 0, 0, LegacyLayoutCount - 1 };
     inline static Setting<RECT> AboutWindowRect{ OptionsGeneral, L"AboutWindowRect" };
     inline static Setting<RECT> DriveSelectWindowRect{ OptionsDriveSelect, L"WindowRect" };
     inline static Setting<RECT> CloudSelectWindowRect{ OptionsDriveSelect, L"CloudConnectionsRect" };

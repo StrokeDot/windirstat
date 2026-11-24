@@ -3,9 +3,11 @@ name: Build Smart Storage Windows installer
 on:
   push:
     branches: [recent-files-redesign]
+    tags: ['smart-storage-v*']
     paths:
       - 'windirstat/**'
       - 'setup/msi/**'
+      - 'tests/Test-Installer.ps1'
       - '.github/workflows/build-smart-storage.yml'
 
 permissions:
@@ -15,11 +17,42 @@ jobs:
   installer:
     runs-on: windows-2025
     timeout-minutes: 25
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Set the native and installer version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = @{}
+          Get-Content windirstat\Version.h | ForEach-Object {
+            if ($_ -match '^#define PRD_(MAJVER|MINVER|PATCH)\s+(\d+)') {
+              $version[$Matches[1]] = $Matches[2]
+            }
+          }
+          if ($version.Count -ne 3) { throw 'The native version header is incomplete.' }
+          $base = "$($version.MAJVER).$($version.MINVER).$($version.PATCH)"
+          $build = git rev-list --count HEAD
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            if ($env:GITHUB_REF_NAME -notmatch '^smart-storage-v(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)\.(?<build>[1-9]\d*)$' -or "$($Matches.major).$($Matches.minor).$($Matches.patch)" -ne $base) {
+              throw "Release tag must match the first three fields in Version.h: $base."
+            }
+            $build = $Matches.build
+          }
+          if ([int]$build -lt 1 -or [int]$build -gt 65535) { throw 'Build number is out of range.' }
+          @(
+            "SMART_STORAGE_VERSION=$base.$build"
+            "SMART_STORAGE_MAJOR=$($version.MAJVER)"
+            "SMART_STORAGE_MINOR=$($version.MINVER)"
+            "SMART_STORAGE_PATCH=$($version.PATCH)"
+            "SMART_STORAGE_BUILD=$build"
+          ) | Add-Content -LiteralPath $env:GITHUB_ENV -Encoding utf8
 
       - name: Build the native app
         shell: pwsh
@@ -29,8 +62,10 @@ jobs:
           $msbuild = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
           if (-not $msbuild) { throw 'Visual Studio MSBuild was not found.' }
           $llvm = Split-Path (Get-Command clang.exe -ErrorAction Stop).Source
-          & $msbuild windirstat.sln /m /p:Configuration=Release /p:Platform=x64 "/p:WslLLVMDirectory=$llvm/"
+          & $msbuild windirstat.sln /m /p:Configuration=Release /p:Platform=x64 "/p:SmartStorageReleaseBuild=$env:SMART_STORAGE_BUILD" "/p:WslLLVMDirectory=$llvm/"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $actual = (Get-Item build\WinDirStat_x64.exe).VersionInfo.FileVersion
+          if ($actual -ne $env:SMART_STORAGE_VERSION) { throw "Native version mismatch: $actual" }
 
       - name: Build and verify the x64 installer
         shell: pwsh
@@ -43,13 +78,6 @@ jobs:
           $wix = Join-Path $wixDir 'wix.exe'
           & $wix extension add -g "WixToolset.UI.wixext/$wixVersion"
           & $wix extension add -g "WixToolset.Util.wixext/$wixVersion"
-          $version = @{}
-          Get-Content windirstat\Version.h | ForEach-Object {
-            if ($_ -match '^#define PRD_(MAJVER|MINVER|PATCH)\s+(\d+)') {
-              $version[$Matches[1]] = $Matches[2]
-            }
-          }
-          $build = git rev-list --count HEAD
           $size = [int]((Get-Item build\WinDirStat_x64.exe).Length / 1KB)
           $product = [guid]::NewGuid().ToString().ToUpperInvariant()
           $output = Join-Path $PWD 'build\SmartStorage-x64.msi'
@@ -57,15 +85,100 @@ jobs:
           try {
             $env:PATH = "$wixDir;$env:PATH"
             & .\make-multilingual.ps1 -GenerateOnly
-            & $wix build -arch x64 WinDirStat.wxs -loc temp_wxl\WinDirStat_en.wxl -culture en-US -o $output -d RELTYPE=BETA -d "MAJVER=$($version.MAJVER)" -d "MINVER=$($version.MINVER)" -d "PATCH=$($version.PATCH)" -d "BUILD=$build" -d "EstimatedSize=$size" -d "ProductCode=$product" -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext
-            & .\make-multilingual.ps1 -MsiPath $output -Arch x64 -RelType BETA -MajVer $version.MAJVER -MinVer $version.MINVER -Patch $version.PATCH -Build $build -EstimatedSize $size -ProductCode $product
+            & $wix build -arch x64 WinDirStat.wxs -loc temp_wxl\WinDirStat_en.wxl -culture en-US -o $output -d RELTYPE=BETA -d "MAJVER=$env:SMART_STORAGE_MAJOR" -d "MINVER=$env:SMART_STORAGE_MINOR" -d "PATCH=$env:SMART_STORAGE_PATCH" -d "BUILD=$env:SMART_STORAGE_BUILD" -d "EstimatedSize=$size" -d "ProductCode=$product" -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext
+            & .\make-multilingual.ps1 -MsiPath $output -Arch x64 -RelType BETA -MajVer $env:SMART_STORAGE_MAJOR -MinVer $env:SMART_STORAGE_MINOR -Patch $env:SMART_STORAGE_PATCH -Build $env:SMART_STORAGE_BUILD -EstimatedSize $size -ProductCode $product
           } finally {
             Pop-Location
           }
-          & .\tests\Test-Installer.ps1 -MsiPath $output
+          & .\tests\Test-Installer.ps1 -MsiPath $output -ExpectedVersion $env:SMART_STORAGE_VERSION
+
+      - name: Verify an upgrade in a custom installation folder
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $previous = Join-Path $env:RUNNER_TEMP 'smart-storage-previous'
+          New-Item -ItemType Directory -Path $previous | Out-Null
+          $releases = gh release list --repo $env:GITHUB_REPOSITORY --limit 30 --json tagName,isDraft,isPrerelease | ConvertFrom-Json
+          $current = $releases | Where-Object { -not $_.isDraft -and -not $_.isPrerelease -and $_.tagName -like 'smart-storage-v*' } |
+            Sort-Object { [version]$_.tagName.Substring('smart-storage-v'.Length) } -Descending | Select-Object -First 1
+          if ($current) {
+            $old = [version]$current.tagName.Substring('smart-storage-v'.Length)
+            $new = [version]$env:SMART_STORAGE_VERSION
+            if ([version]$new.ToString(3) -le [version]$old.ToString(3)) {
+              throw 'Increase the major, minor, or patch version for Windows Installer upgrades.'
+            }
+            gh release download $current.tagName --repo $env:GITHUB_REPOSITORY --pattern 'SmartStorage-x64.msi' --dir $previous
+          } else {
+            gh run download 45317350657 --repo $env:GITHUB_REPOSITORY --name 'SmartStorage-x64' --dir $previous
+          }
+          $installed = Join-Path $env:RUNNER_TEMP 'Smart Storage Custom Install'
+          $installer = Join-Path ([Environment]::SystemDirectory) 'msiexec.exe'
+          function Install-Package([string]$Path, [string]$Log) {
+            $p = Start-Process -FilePath $installer -ArgumentList @('/i', ('"' + $Path + '"'), '/qn', '/norestart',
+              ('INSTALLFOLDER="' + $installed + '"'), '/l*v', ('"' + $Log + '"')) -PassThru -Wait -WindowStyle Hidden
+            if ($p.ExitCode -notin 0,3010) {
+              Get-Content -LiteralPath $Log -Tail 80
+              throw "Windows Installer returned $($p.ExitCode)."
+            }
+          }
+          $executable = Join-Path $installed 'SmartStorage.exe'
+          Install-Package (Join-Path $previous 'SmartStorage-x64.msi') (Join-Path $env:RUNNER_TEMP 'smart-storage-old.log')
+          if (-not (Test-Path -LiteralPath $executable)) { throw 'Old MSI did not install in the custom folder.' }
+          Install-Package (Join-Path $PWD 'build\SmartStorage-x64.msi') (Join-Path $env:RUNNER_TEMP 'smart-storage-new.log')
+          if ((Get-Item -LiteralPath $executable).VersionInfo.FileVersion -ne $env:SMART_STORAGE_VERSION) {
+            throw 'The upgraded executable in the custom folder has the wrong version.'
+          }
+
+      - name: Prepare the update manifest
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $asset = Get-Item build\SmartStorage-x64.msi
+          $digest = (Get-FileHash -LiteralPath $asset.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          $manifest = @('SmartStorage-x64', $env:SMART_STORAGE_VERSION, $asset.Length, $digest, '') -join [char]10
+          [IO.File]::WriteAllText((Join-Path $PWD 'build\SmartStorage-x64.update'), $manifest)
 
       - uses: actions/upload-artifact@v4
         with:
           name: SmartStorage-x64
-          path: build/SmartStorage-x64.msi
+          path: |
+            build/SmartStorage-x64.msi
+            build/SmartStorage-x64.update
+            build/WinDirStat_x64.exe
           if-no-files-found: error
+
+  publish:
+    if: github.ref_type == 'tag' && github.repository == 'StrokeDot/windirstat'
+    needs: installer
+    runs-on: windows-2025
+    concurrency:
+      group: smart-storage-public-release
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SmartStorage-x64
+          path: release
+      - name: Publish the verified installer and update manifest
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $version = [version]$env:GITHUB_REF_NAME.Substring('smart-storage-v'.Length)
+          $releases = gh release list --repo $env:GITHUB_REPOSITORY --limit 30 --json tagName,isDraft,isPrerelease | ConvertFrom-Json
+          foreach ($release in $releases) {
+            if ($release.isDraft -or $release.isPrerelease -or $release.tagName -notlike 'smart-storage-v*') { continue }
+            $published = [version]$release.tagName.Substring('smart-storage-v'.Length)
+            if ([version]$version.ToString(3) -le [version]$published.ToString(3)) {
+              throw 'This tag would publish an older or installer-equivalent release.'
+            }
+          }
+          gh release create $env:GITHUB_REF_NAME 'release/SmartStorage-x64.msi' 'release/SmartStorage-x64.update' --repo $env:GITHUB_REPOSITORY --verify-tag --latest --title "Smart Storage $version (x64)" --notes 'Windows x64 installer with automatic update checks. Updates are verified against the GitHub release manifest before Windows Setup opens.'

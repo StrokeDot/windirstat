@@ -8,7 +8,7 @@
 
 #include "pch.h"
 
-// CLayoutPopup - 3x4 grid of layout cards, anchored to a toolbar button.
+// CLayoutPopup - 2x2 grid of layout cards, anchored to a toolbar button.
 class CLayoutPopup final : public MessageTarget<CLayoutPopup, CWnd>
 {
 public:
@@ -21,18 +21,16 @@ public:
     struct LayoutDef
     {
         CSplitterWnd::Orientation orientation;
-        CSplitterWnd::Orientation subOrientation;
-        int subPane;
-        std::array<LAYOUT_VIEW_TYPE, 3> views; // Standalone pane, then the two nested panes.
-        double ratio, subRatio;
-        float previewRatio, previewSubRatio;
+        std::array<LAYOUT_VIEW_TYPE, 2> views;
+        double ratio;
 
-        std::array<Pane, 3> PreviewPanes() const;
+        std::array<Pane, 2> PreviewPanes() const;
     };
 
+    static constexpr int LayoutCount = 4;
     static const std::array<LayoutDef, LayoutCount> LAYOUTS;
 
-    static const LayoutDef& CurrentLayout() { return LAYOUTS[COptions::WindowLayout]; }
+    static const LayoutDef& CurrentLayout();
     bool Create(CWnd* parent);
     void ShowAtButton(const CRect& buttonScreenRect);
     void DismissPopup(bool cancel = false, bool resetPositions = false);
@@ -45,14 +43,13 @@ protected:
     static constexpr int CARD_H_BASE = CARD_W_BASE * 9 / 16;
     static constexpr int GAP_BASE    =  12;
     static constexpr int MARGIN_BASE =  14;
-    static constexpr int COLS        =   3;
-    static constexpr int ROWS        =   4;
+    static constexpr int COLS        =   2;
+    static constexpr int ROWS        =   2;
 
     CRect CardRect(int idx) const;
     int   CardAtPoint(CPoint pt) const;
     void PaintCard(CDC& dc, int idx) const;
     void DrawListPane(CDC& dc, CRect r, LAYOUT_VIEW_TYPE viewType) const;
-    void DrawVisualizationPane(CDC& dc, CRect r) const;
 
 public:
     static std::span<const RouteEntry> Routes();

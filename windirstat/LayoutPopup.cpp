@@ -11,63 +11,33 @@
 
 #include <algorithm>
 
-// Splitter structure, default positions, and proportions used by the preview cards.
-const std::array<CLayoutPopup::LayoutDef, LayoutCount> CLayoutPopup::LAYOUTS = []
+// The old twelve cards map to four list arrangements once the chart is removed.
+static constexpr std::array legacyToListLayout{ 0, 0, 0, 0, 0, 1, 0, 2, 2, 0, 3, 3 };
+static constexpr std::array listToLegacyLayout{ 0, 5, 7, 10 };
+static_assert(legacyToListLayout.size() == LegacyLayoutCount);
+
+const std::array<CLayoutPopup::LayoutDef, CLayoutPopup::LayoutCount> CLayoutPopup::LAYOUTS = []
 {
     using enum CSplitterWnd::Orientation;
     return std::to_array<LayoutDef>({
-        // [AF|FT] above visualization
-        { Horizontal, Vertical, 0, { VT_VISUALIZATION, VT_ALLFILES, VT_FILETYPES }, 0.5, 0.75, 0.5f, 0.58f },
-        // AF | [FT|visualization]
-        { Vertical, Vertical, 1, { VT_ALLFILES, VT_FILETYPES, VT_VISUALIZATION }, 0.4, 1.0 / 3.0, 0.4f, 1.0f / 3.0f },
-        // [visualization|AF] | FT
-        { Vertical, Vertical, 0, { VT_FILETYPES, VT_VISUALIZATION, VT_ALLFILES }, 0.8, 0.5, 0.8f, 0.5f },
-        // Visualization above [AF|FT]
-        { Horizontal, Vertical, 1, { VT_VISUALIZATION, VT_ALLFILES, VT_FILETYPES }, 0.5, 0.75, 0.5f, 0.58f },
-        // [AF|visualization] | FT
-        { Vertical, Vertical, 0, { VT_FILETYPES, VT_ALLFILES, VT_VISUALIZATION }, 0.8, 0.5, 0.8f, 0.5f },
-        // Visualization | [FT|AF]
-        { Vertical, Vertical, 1, { VT_VISUALIZATION, VT_FILETYPES, VT_ALLFILES }, 0.4, 1.0 / 3.0, 0.4f, 1.0f / 3.0f },
-        // [AF/visualization] | FT
-        { Vertical, Horizontal, 0, { VT_FILETYPES, VT_ALLFILES, VT_VISUALIZATION }, 0.75, 0.5, 0.6f, 0.5f },
-        // [AF/FT] | visualization
-        { Vertical, Horizontal, 0, { VT_VISUALIZATION, VT_ALLFILES, VT_FILETYPES }, 0.5, 0.5, 0.5f, 0.5f },
-        // Visualization | [AF/FT]
-        { Vertical, Horizontal, 1, { VT_VISUALIZATION, VT_ALLFILES, VT_FILETYPES }, 0.5, 0.5, 0.5f, 0.5f },
-        // [visualization/AF] | FT
-        { Vertical, Horizontal, 0, { VT_FILETYPES, VT_VISUALIZATION, VT_ALLFILES }, 0.75, 0.5, 0.6f, 0.5f },
-        // [FT/AF] | visualization
-        { Vertical, Horizontal, 0, { VT_VISUALIZATION, VT_FILETYPES, VT_ALLFILES }, 0.5, 0.5, 0.5f, 0.5f },
-        // Visualization | [FT/AF]
-        { Vertical, Horizontal, 1, { VT_VISUALIZATION, VT_FILETYPES, VT_ALLFILES }, 0.5, 0.5, 0.5f, 0.5f },
+        { Vertical,   { VT_ALLFILES, VT_FILETYPES }, 0.75 },
+        { Vertical,   { VT_FILETYPES, VT_ALLFILES }, 0.25 },
+        { Horizontal, { VT_ALLFILES, VT_FILETYPES }, 0.75 },
+        { Horizontal, { VT_FILETYPES, VT_ALLFILES }, 0.25 },
     });
 }();
 
-std::array<CLayoutPopup::Pane, 3> CLayoutPopup::LayoutDef::PreviewPanes() const
+const CLayoutPopup::LayoutDef& CLayoutPopup::CurrentLayout()
 {
-    // Split the preview with the same pane placement as the live windows.
-    const auto split = [](const Pane& bounds, const CSplitterWnd::Orientation axis, const float ratio)
-    {
-        std::array<Pane, 2> panes{ bounds, bounds };
-        if (axis == CSplitterWnd::Orientation::Vertical)
-        {
-            panes[0].w *= ratio;
-            panes[1].x += panes[0].w;
-            panes[1].w -= panes[0].w;
-        }
-        else
-        {
-            panes[0].h *= ratio;
-            panes[1].y += panes[0].h;
-            panes[1].h -= panes[0].h;
-        }
-        return panes;
-    };
-    auto main = split({ views[0], 0, 0, 1, 1 }, orientation, previewRatio);
-    auto sub = split(main[subPane], subOrientation, previewSubRatio);
-    sub[0].viewType = views[1];
-    sub[1].viewType = views[2];
-    return { main[1 - subPane], sub[0], sub[1] };
+    return LAYOUTS[legacyToListLayout[COptions::WindowLayout]];
+}
+
+std::array<CLayoutPopup::Pane, 2> CLayoutPopup::LayoutDef::PreviewPanes() const
+{
+    const float split = static_cast<float>(ratio);
+    if (orientation == CSplitterWnd::Orientation::Vertical)
+        return { Pane{ views[0], 0, 0, split, 1 }, Pane{ views[1], split, 0, 1 - split, 1 } };
+    return { Pane{ views[0], 0, 0, 1, split }, Pane{ views[1], 0, split, 1, 1 - split } };
 }
 
 bool CLayoutPopup::Create(CWnd* parent)
@@ -100,7 +70,7 @@ bool CLayoutPopup::Create(CWnd* parent)
 
 void CLayoutPopup::ShowAtButton(const CRect& buttonScreenRect)
 {
-    m_selectedLayout = COptions::WindowLayout;
+    m_selectedLayout = legacyToListLayout[COptions::WindowLayout];
     m_hoveredLayout  = -1;
 
     const CRect lastCard = CardRect(COLS * ROWS - 1);
@@ -261,13 +231,6 @@ void CLayoutPopup::DrawListPane(CDC& dc, const CRect r, const LAYOUT_VIEW_TYPE v
     }
 }
 
-void CLayoutPopup::DrawVisualizationPane(CDC& dc, const CRect r) const
-{
-    static const std::unique_ptr<CItem> demoRoot = CTreeMap::BuildDemoTree();
-    CTreeMap treeMap;
-    treeMap.DrawTreeMap(dc.Handle(), r, demoRoot.get(), &COptions::TreeMapOptions);
-}
-
 void CLayoutPopup::PaintCard(CDC& dc, const int idx) const
 {
     const bool  selected = (idx == m_selectedLayout);
@@ -296,12 +259,7 @@ void CLayoutPopup::PaintCard(CDC& dc, const int idx) const
         );
         if (pr.Width() < 2 || pr.Height() < 2) continue;
 
-        switch (viewType)
-        {
-        case VT_ALLFILES:
-        case VT_FILETYPES: DrawListPane(dc, pr, viewType); break;
-        case VT_VISUALIZATION: DrawVisualizationPane(dc, pr); break;
-        }
+        DrawListPane(dc, pr, viewType);
     }
 
     const int borderWidth = (selected || hovered) ? 2 : 1;
@@ -382,7 +340,7 @@ void CLayoutPopup::OnLButtonUp(UINT /*nFlags*/, const CPoint point)
     }
 
     m_selectedLayout = hit;
-    COptions::WindowLayout = hit;
+    COptions::WindowLayout = listToLegacyLayout[hit];
     DismissPopup(false, true);
 }
 

@@ -201,9 +201,6 @@ protected:
     void OnUpdateCompressionHandler(CCmdUI* pCmdUI);
     void OnUpdateViewSpaceItem(CCmdUI* pCmdUI);
     void OnViewSpaceItem(UINT commandId);
-    void OnTreeMapZoomIn();
-    void OnTreeMapZoomOut();
-    void OnTreeMapZoomReset();
     void OnRemoveRoamingProfiles() const;
     void OnRemoveLocalProfiles();
     void OnDisableHibernateFile();
@@ -264,11 +261,8 @@ inline std::span<const RouteEntry> CWinDirStatModel::Routes()
         Route::Update<&OnUpdateCentralHandler>(ID_CLEANUP_MOVE_TO),
         Route::Update<&OnUpdateViewSpaceItem>(ID_VIEW_SHOWFREESPACE, ID_VIEW_SHOWUNKNOWN),
         Route::Command<&OnViewSpaceItem>(ID_VIEW_SHOWFREESPACE, ID_VIEW_SHOWUNKNOWN),
-        Route::Command<&OnTreeMapZoomIn>(ID_TREEMAP_ZOOMIN),
         Route::Update<&OnUpdateCentralHandler>(ID_TREEMAP_ZOOMIN),
-        Route::Command<&OnTreeMapZoomOut>(ID_TREEMAP_ZOOMOUT),
         Route::Update<&OnUpdateCentralHandler>(ID_TREEMAP_ZOOMOUT),
-        Route::Command<&OnTreeMapZoomReset>(ID_TREEMAP_ZOOMRESET),
         Route::Update<&OnUpdateCentralHandler>(ID_TREEMAP_ZOOMRESET),
         Route::Command<&OnExplorerSelect>(ID_CLEANUP_EXPLORER_SELECT),
         Route::Update<&OnUpdateCentralHandler>(ID_CLEANUP_EXPLORER_SELECT),

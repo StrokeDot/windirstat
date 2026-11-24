@@ -1,5 +1,12 @@
 # WinDirStat - Windows Directory Statistics
 
+## Smart Storage updates
+
+Install the x64 MSI from [Smart Storage releases](https://github.com/StrokeDot/windirstat/releases/latest). Smart Storage checks this repository at startup. Use **Help → Check for Updates** to check manually. The app offers Windows Setup after it verifies the new installer. Keep the current installation folder in Setup to update the existing copy.
+
+To publish a new version, increase the major, minor, or patch field in `windirstat/Version.h` and push a matching `smart-storage-vMAJOR.MINOR.PATCH.BUILD` tag. Windows Installer compares the first three fields. The release workflow tests a custom-folder upgrade and publishes the installer and its checksum manifest.
+
+
 ## Description
 
 WinDirStat is a disk usage analyzer and cleanup assistant for Microsoft Windows. Scan drives, folders, network shares, connected MTP devices, S3-compatible storage, Azure Blob Storage, or WebDAV collections, then explore usage through sortable file lists, file-type statistics, and interactive treemaps, sunbursts, or flame graphs.

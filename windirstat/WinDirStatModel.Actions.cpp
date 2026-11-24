@@ -39,9 +39,6 @@ void CWinDirStatModel::OnUpdateCentralHandler(CCmdUI* pCmdUI)
 
     // special conditions
     static auto model = this;
-    static bool (*isZoomed)(CItem*) = [](CItem*) { return Get()->IsZoomed(); };
-    static bool (*canZoomIn)(CItem*) = [](CItem* i) { return i != nullptr && (i = i->IsLeaf() ? i->GetParent() : i) != nullptr && i != model->GetZoomItem() && i->TmiGetSize() > 0; };
-    static bool (*canZoomOut)(CItem*) = [](CItem*) { return model->GetZoomItem() != model->GetRootItem(); };
     static bool (*parentNotNull)(CItem*) = [](CItem* i) { return i != nullptr && i->GetParent() != nullptr; };
     static bool (*reselectAvail)(CItem*) = [](CItem*) { return model->IsReselectChildAvailable(); };
 
@@ -161,9 +158,6 @@ void CWinDirStatModel::OnUpdateCentralHandler(CCmdUI* pCmdUI)
         { ID_TOOLS_SET_DATES,         { true,  true,  false, LF_FILETREE, IT_DRIVE | IT_DIRECTORY, filesystemOnly } },
         { ID_TREEMAP_RESELECT_CHILD,  { true,  true,  false, LF_FILETREE, ITF_ANY, reselectAvail } },
         { ID_TREEMAP_SELECT_PARENT,   { false, false, false, LF_FILETREE, ITF_ANY, parentNotNull } },
-        { ID_TREEMAP_ZOOMRESET,       { true,  true,  false, LF_FILETREE, ITF_ANY, isZoomed } },
-        { ID_TREEMAP_ZOOMIN,          { false, false, false, LF_FILETREE, IT_MYCOMPUTER | IT_DRIVE | IT_DIRECTORY | IT_FILE, canZoomIn } },
-        { ID_TREEMAP_ZOOMOUT,         { true,  true,  false, LF_FILETREE, ITF_ANY, canZoomOut } },
         { ID_VIEW_SHOWFREESPACE,      { true,  true,  false, LF_NONE,     ITF_ANY } },
         { ID_VIEW_SHOWUNKNOWN,        { true,  true,  false, LF_NONE,     ITF_ANY } }
     };
@@ -379,38 +373,6 @@ void CWinDirStatModel::OnViewSpaceItem(const UINT commandId)
     // Recalculate totals and refresh the graph with the new setting.
     visible = !visible;
     StartScanningEngine({});
-}
-
-void CWinDirStatModel::OnTreeMapZoomIn()
-{
-    auto* item = CFileTreeControl::Get()->GetFirstSelectedItem<CItem>();
-    if (item != nullptr) item = item->GetLinkedItem();
-    if (item != nullptr)
-    {
-        SetZoomItem(item->IsRootItem() ? GetRootItem() :
-            item->IsTypeOrFlag(IT_FILE) ? item->GetParent() : item);
-        if (!CMainFrame::Get()->IsVisualizationShown())
-            CMainFrame::Get()->RestoreVisualizationPane(true);
-    }
-}
-
-void CWinDirStatModel::OnTreeMapZoomOut()
-{
-    const CItem* zoomItem = GetZoomItem();
-    if (zoomItem != nullptr && zoomItem->GetParent() != nullptr)
-    {
-        SetZoomItem(zoomItem->GetParent());
-        if (!CMainFrame::Get()->IsVisualizationShown())
-            CMainFrame::Get()->RestoreVisualizationPane(true);
-    }
-}
-
-void CWinDirStatModel::OnTreeMapZoomReset()
-{
-    if (IsZoomed())
-    {
-        SetZoomItem(GetRootItem());
-    }
 }
 
 void CWinDirStatModel::OnExplorerSelect()
@@ -1028,8 +990,6 @@ void CWinDirStatModel::StartScanningEngine(std::vector<CItem*> items)
     // Clear any reselection options since they may be invalidated
     ClearReselectChildStack();
 
-    // Do not attempt to update visualizations while scanning
-    CMainFrame::Get()->GetVisualizationPane()->SuspendRecalculationDrawing(true);
 
     // Prune descendants: if both an ancestor and a descendant are in the list,
     // remove any descendant since it will be rescanned as part of the ancestor scan
@@ -1221,7 +1181,6 @@ void CWinDirStatModel::StartScanningEngine(std::vector<CItem*> items)
             {
                 Get()->UnlinkRoot();
                 // No worker is launched to release this scan's suspension.
-                CMainFrame::Get()->GetVisualizationPane()->SuspendRecalculationDrawing(false);
                 return;
             }
 
@@ -1357,10 +1316,14 @@ void CWinDirStatModel::StartScanningEngine(std::vector<CItem*> items)
                 CMainFrame::Get()->SetProgressComplete();
                 // Preserve the current layout. A replacement scan expands All Files
                 // before aborting this worker and must remain expanded.
-                CMainFrame::Get()->GetVisualizationPane()->SuspendRecalculationDrawing(false);
             });
             return;
         }
+
+        CMainFrame::Get()->InvokeInMessageThread([]
+        {
+            CMainFrame::Get()->SetProgressFinalizing();
+        });
 
         // Recalculate each refreshed folder after workers have supplied the final child timestamps.
         for (CItem* parent : recalcParents) parent->UpwardRecalcLastChange([&](const CItem* item)
@@ -1492,7 +1455,6 @@ void CWinDirStatModel::StartScanningEngine(std::vector<CItem*> items)
             Get()->NotifyPanes();
             CMainFrame::Get()->SetProgressComplete();
             CMainFrame::Get()->ApplyPaneVisibility(true);
-            CMainFrame::Get()->GetVisualizationPane()->SuspendRecalculationDrawing(false);
             CMainFrame::Get()->UnlockWindowUpdate();
 
             // Restore pre-scan visual orientation

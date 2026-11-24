@@ -6,7 +6,6 @@
 
 #include "pch.h"
 #include "FileTreeView.h"
-#include "TreeMapView.h"
 #include "FileTopControl.h"
 #include "FileSearchControl.h"
 #include "FileWatcherControl.h"
