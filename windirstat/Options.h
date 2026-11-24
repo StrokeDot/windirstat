@@ -226,7 +226,7 @@ public:
     inline static Setting<bool> ShowTimeSpent{ OptionsFileTree, L"ShowTimeSpent", true };
     inline static Setting<bool> ShowToolBar{ OptionsGeneral, L"ShowToolBar", true };
     inline static Setting<int> ToolBarSizePercent{ OptionsGeneral, L"ToolBarSizePercent", 0, 0, 200 };
-    inline static Setting<bool> ShowVisualization{ OptionsTreeMap, L"ShowVisualization", true };
+    inline static Setting<bool> ShowVisualization{ OptionsTreeMap, L"ShowVisualizationPane", false };
     inline static Setting<bool> ShowUnknown{ OptionsGeneral, L"ShowUnknown", false };
     inline static Setting<bool> SkipDupeDetectionCloudLinks{ OptionsGeneral,
         L"SkipDupeDetectionCloudLinks", true, CheckboxBind(IDC_SKIP_CLOUD_LINKS) };
