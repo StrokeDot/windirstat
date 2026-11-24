@@ -5,6 +5,9 @@
 
 #pragma once
 
+#include <memory>
+
 class CWnd;
 
-bool ShowRecentFilesDialog(CWnd* parent);
+std::unique_ptr<CWnd> CreateRecentFilesPane(CWnd* parent);
+void RefreshRecentFilesPane(CWnd& pane);

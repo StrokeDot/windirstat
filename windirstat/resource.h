@@ -29,6 +29,7 @@
 #define IDD_SELECTCLOUD                 122
 #define IDD_CLOUD_CONNECTION            123
 #define IDD_RECENT_FILES                126
+#define IDD_APP_CACHES_PANE             127
 #define IDC_ADD_CLEANUP                 1000
 #define IDC_ADD_FOLDER                  1001
 #define IDC_ASKFORCONFIRMATION          1002
@@ -234,6 +235,15 @@
 #define IDC_RECENT_REFRESH              1207
 #define IDC_RECENT_RECYCLE_BIN          1208
 #define IDC_RECENT_RECOVERY             1209
+#define IDC_WORKSPACE_OVERVIEW          1210
+#define IDC_WORKSPACE_CACHES            1211
+#define IDC_WORKSPACE_RECENT            1212
+#define IDC_WORKSPACE_PAUSE             1213
+#define IDC_APP_CACHES_LIST             1214
+#define IDC_APP_CACHES_STATUS           1215
+#define IDC_APP_CACHES_REFRESH          1216
+#define IDC_APP_CACHES_OPEN             1217
+#define IDC_APP_CACHES_GUIDE            1218
 #define ID_APP_ABOUT                    32768
 #define ID_APP_EXIT                     32769
 #define ID_CLEANUP_CREATE_HARDLINK      32770
@@ -453,9 +463,9 @@
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        127
+#define _APS_NEXT_RESOURCE_VALUE        128
 #define _APS_NEXT_COMMAND_VALUE         32973
-#define _APS_NEXT_CONTROL_VALUE         1210
-#define _APS_NEXT_SYMED_VALUE           127
+#define _APS_NEXT_CONTROL_VALUE         1219
+#define _APS_NEXT_SYMED_VALUE           128
 #endif
 #endif

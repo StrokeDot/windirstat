@@ -5,6 +5,7 @@
 
 #include "pch.h"
 #include "Layout.h"
+#include "RecentFilesDlg.h"
 #include "MessageBoxDlg.h"
 #include <shlguid.h>
 
@@ -25,12 +26,14 @@ namespace
     public:
         explicit RecentFilesDlg(CWnd* parent) : MessageTarget(IDD_RECENT_FILES, nullptr, parent) {}
         static std::span<const RouteEntry> Routes();
+        void Refresh();
 
     protected:
         bool OnInitDialog() override;
 
     private:
-        void Refresh();
+        void OnOK() override {}
+        void OnCancel() override {}
         void OpenRecycleBin();
         void OpenRecovery();
         void OnSelectionChanged(NMHDR*, LRESULT* result);
@@ -75,11 +78,10 @@ namespace
         m_list.SetTextColor(DarkMode::SystemColor(COLOR_WINDOWTEXT));
         m_layout.AddControl(IDC_RECENT_LIST, 0, 0, 1, 1);
         m_layout.AddControl(IDC_RECENT_STATUS, 0, 1, 1, 0);
-        for (const int id : { IDC_RECENT_REFRESH, IDC_RECENT_RECYCLE_BIN, IDC_RECENT_RECOVERY, IDCANCEL })
+        for (const int id : { IDC_RECENT_REFRESH, IDC_RECENT_RECYCLE_BIN, IDC_RECENT_RECOVERY })
             m_layout.AddControl(id, 1, 1, 0, 0);
         m_layout.OnInitDialog(true);
 
-        Refresh();
         return true;
     }
 
@@ -145,7 +147,7 @@ namespace
 
     void RecentFilesDlg::OpenRecovery()
     {
-        if (IsElevationActive()) CloseModal(IDYES);
+        if (IsElevationActive()) ::PostMessageW(GetAncestor(Handle(), GA_ROOT), WM_COMMAND, ID_TOOLS_RECOVERY, 0);
         else CMessageBoxDlg::Show(Localization::Lookup(IDS_RECENT_NEEDS_ELEVATION), MB_OK, this);
     }
 
@@ -172,7 +174,12 @@ namespace
     }
 }
 
-bool ShowRecentFilesDialog(CWnd* parent)
+std::unique_ptr<CWnd> CreateRecentFilesPane(CWnd* parent)
 {
-    return RecentFilesDlg(parent).ShowModal() == IDYES;
+    auto pane = std::make_unique<RecentFilesDlg>(parent);
+    if (!CreateDialogParamW(GetAppInstance(), MAKEINTRESOURCEW(IDD_RECENT_FILES), parent->Handle(),
+        FrameworkDialogProc, reinterpret_cast<LPARAM>(static_cast<CWnd*>(pane.get())))) return {};
+    return pane;
 }
+
+void RefreshRecentFilesPane(CWnd& pane) { static_cast<RecentFilesDlg&>(pane).Refresh(); }

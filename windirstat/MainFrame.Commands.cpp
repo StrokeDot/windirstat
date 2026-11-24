@@ -14,7 +14,6 @@
 #include "ExtensionView.h"
 #include "ProgressDlg.h"
 #include "RecoveryDlg.h"
-#include "RecentFilesDlg.h"
 
 static const int UdcMenuTag = 0;
 
@@ -25,7 +24,7 @@ void CMainFrame::OnHelpCheckForUpdates()
 
 void CMainFrame::OnViewRecentFiles()
 {
-    if (ShowRecentFilesDialog(this)) OnToolsRecovery();
+    m_workspace.ShowPage(CStorageWorkspace::Page::Recent);
 }
 
 void CMainFrame::OnToolsRecovery()

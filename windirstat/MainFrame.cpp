@@ -315,6 +315,8 @@ void CMainFrame::UpdateProgressRange(const ULONGLONG range)
         m_progressRange = range;
 }
 
+static std::wstring FormatScanTime(std::chrono::seconds duration);
+
 void CMainFrame::SetProgressComplete()
 {
     // Disable any potential suspend state
@@ -331,8 +333,18 @@ void CMainFrame::SetProgressComplete()
         m_taskbarList->SetProgressState(*this, m_taskbarButtonState = TBPF_NOPROGRESS);
     }
 
+    const bool haveTiming = m_progressVisible;
+    const auto elapsed = haveTiming ? m_scanTiming.Elapsed(ScanTiming::Clock::now()) : ScanTiming::Seconds{};
+    auto* model = CWinDirStatModel::Get();
     DestroyProgress();
-    CWinDirStatModel::Get()->SetScanTitlePrefix(wds::strEmpty);
+    if (const auto* root = model->GetRootItem(); root && root->IsDone())
+    {
+        const bool complete = root->GetScanResult().outcome == ScanOutcome::Complete;
+        auto status = Localization::Lookup(complete ? IDS_WORKSPACE_SCAN_COMPLETE : IDS_SCAN_INCOMPLETE);
+        if (haveTiming) status += L" · " + Localization::Format(IDS_SCAN_ELAPSEDs, FormatScanTime(elapsed));
+        m_workspace.SetScanStatus(std::move(status), model->GetScanTitle(), std::nullopt, false, false);
+    }
+    model->SetScanTitlePrefix(wds::strEmpty);
 
     // Completion arrives as a sent message, so refresh toolbar commands without waiting for input
     CDirStatApp::Get()->OnIdle(0);
@@ -392,6 +404,7 @@ void CMainFrame::UpdateProgress()
 
     std::wstring titlePrefix;
     std::wstring suspended;
+    std::optional<int> scanPercent;
 
     // Display the suspend text in the bar if suspended
     if (IsScanSuspended())
@@ -411,6 +424,7 @@ void CMainFrame::UpdateProgress()
         // Limit progress at 100% as hard-linked files will count twice
         const int pos = std::min(static_cast<int>((m_progressPos * 100ull) / m_progressRange), 100);
         m_progress.SetPos(pos);
+        scanPercent = pos;
 
         titlePrefix = std::to_wstring(pos) + L"% " + suspended;
         if (m_taskbarList && m_taskbarButtonState != TBPF_PAUSED)
@@ -441,6 +455,8 @@ void CMainFrame::UpdateProgress()
             titlePrefix += L" · " + Localization::Format(IDS_SCAN_REMAININGs, FormatScanTime(*remaining));
     }
     CWinDirStatModel::Get()->SetScanTitlePrefix(titlePrefix);
+    m_workspace.SetScanStatus(titlePrefix, CWinDirStatModel::Get()->GetScanTitle(), scanPercent,
+        !m_scanFinalizing, IsScanSuspended());
 }
 
 void CMainFrame::CreateStatusProgress()
@@ -492,6 +508,7 @@ void CMainFrame::DestroyProgress()
     m_workingItem = nullptr;
     m_progressVisible = false;
     m_scanFinalizing = false;
+    m_workspace.ClearScanStatus();
     UpdatePaneText();
 }
 
@@ -618,7 +635,9 @@ void CMainFrame::PostNcDestroy()
 
 bool CMainFrame::OnCreateClient()
 {
-    if (!m_splitter.CreateStatic(this, CSplitterWnd::Orientation::Vertical)) return false;
+    if (!m_workspace.CreateWorkspace(this) ||
+        !m_splitter.CreateStatic(&m_workspace, CSplitterWnd::Orientation::Vertical)) return false;
+    m_workspace.SetOverview(&m_splitter);
 
     // Publish the views only once all of them exist.
     auto fileTabbedView = std::make_unique<CFileTabbedView>();

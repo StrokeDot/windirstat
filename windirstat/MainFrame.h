@@ -12,6 +12,7 @@
 #include "Dialogs/ProgressDlg.h"
 #include "LayoutPopup.h"
 #include "ScanTiming.h"
+#include "StorageWorkspace.h"
 
 class CWdsSplitterWnd;
 class CMainFrame;
@@ -216,6 +217,7 @@ public:
     CItem* m_workingItem = nullptr;
     ScanTiming m_scanTiming;
 
+    CStorageWorkspace m_workspace;
     CWdsSplitterWnd m_splitter{ COptions::MainSplitterPos.Ptr() };    // Holds the nested splitter and the remaining pane
     CLayoutPopup m_layoutPopup;                                        // Floating layout-picker popup
 
