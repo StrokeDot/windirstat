@@ -1,0 +1,71 @@
+name: Build Smart Storage Windows installer
+
+on:
+  push:
+    branches: [recent-files-redesign]
+    paths:
+      - 'windirstat/**'
+      - 'setup/msi/**'
+      - '.github/workflows/build-smart-storage.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build the native app
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $msbuild = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
+          if (-not $msbuild) { throw 'Visual Studio MSBuild was not found.' }
+          $llvm = Split-Path (Get-Command clang.exe -ErrorAction Stop).Source
+          & $msbuild windirstat\windirstat.vcxproj /m /p:Configuration=Release /p:Platform=x64 "/p:WslLLVMDirectory=$llvm/"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build and verify the x64 installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $wixVersion = '6.0.2'
+          $wixDir = Join-Path $env:RUNNER_TEMP 'smart-storage-wix'
+          dotnet tool install wix --version $wixVersion --tool-path $wixDir
+          $wix = Join-Path $wixDir 'wix.exe'
+          & $wix extension add -g "WixToolset.UI.wixext/$wixVersion"
+          & $wix extension add -g "WixToolset.Util.wixext/$wixVersion"
+          $version = @{}
+          Get-Content windirstat\Version.h | ForEach-Object {
+            if ($_ -match '^#define PRD_(MAJVER|MINVER|PATCH)\s+(\d+)') {
+              $version[$Matches[1]] = $Matches[2]
+            }
+          }
+          $build = git rev-list --count HEAD
+          $size = [int]((Get-Item build\WinDirStat_x64.exe).Length / 1KB)
+          $product = [guid]::NewGuid().ToString().ToUpperInvariant()
+          $output = Join-Path $PWD 'build\SmartStorage-x64.msi'
+          Push-Location setup\msi
+          try {
+            $env:PATH = "$wixDir;$env:PATH"
+            & .\make-multilingual.ps1 -GenerateOnly
+            & $wix build -arch x64 WinDirStat.wxs -loc temp_wxl\WinDirStat_en.wxl -culture en-US -o $output -d RELTYPE=BETA -d "MAJVER=$($version.MAJVER)" -d "MINVER=$($version.MINVER)" -d "PATCH=$($version.PATCH)" -d "BUILD=$build" -d "EstimatedSize=$size" -d "ProductCode=$product" -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext
+            & .\make-multilingual.ps1 -MsiPath $output -Arch x64 -RelType BETA -MajVer $version.MAJVER -MinVer $version.MINVER -Patch $version.PATCH -Build $build -EstimatedSize $size -ProductCode $product
+          } finally {
+            Pop-Location
+          }
+          & .\tests\Test-Installer.ps1 -MsiPath $output
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SmartStorage-x64
+          path: build/SmartStorage-x64.msi
+          if-no-files-found: error
