@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WinDirStat · Recent Files</title>
+<style>
+:root {
+  color-scheme: dark;
+  --base: #101614;
+  --sidebar: #121a17;
+  --panel: #18211d;
+  --raised: #1e2923;
+  --line: #2c3b32;
+  --text: #eaf3ed;
+  --muted: #a3b7ac;
+  --accent: #8ce6ae;
+  --active: #203b2c;
+  font: 14px/1.5 "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--base); color: var(--text); }
+button, input, select { font: inherit; color: inherit; }
+button, select { cursor: pointer; }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.app { display: grid; grid-template-columns: 216px minmax(0, 1fr); min-height: 100vh; }
+aside { background: var(--sidebar); border-right: 1px solid var(--line); padding: 24px 14px; }
+.brand { display: flex; align-items: center; gap: 11px; margin: 0 8px 32px; font-size: 17px; font-weight: 650; }
+.mark { width: 28px; height: 28px; padding: 5px; display: grid; gap: 2px; grid-template-columns: 2fr 1fr; background: var(--accent); border-radius: 7px; }
+.mark span { background: #253f2e; border-radius: 1px; }
+.mark span:first-child { grid-row: span 2; }
+nav { display: grid; gap: 5px; }
+nav button { border: 1px solid transparent; background: transparent; text-align: left; padding: 9px 11px; border-radius: 7px; color: var(--muted); }
+nav button:hover { background: var(--panel); color: var(--text); }
+nav button[aria-current="page"] { background: var(--active); border-color: #345943; color: var(--accent); font-weight: 650; }
+.scope { margin: 27px 8px 0; border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); }
+.scope strong { color: var(--text); display: block; margin-top: 3px; }
+main { width: min(100%, 1450px); padding: 34px clamp(20px, 4vw, 60px); }
+header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+h1, h2, p { margin: 0; }
+h1 { font-size: 32px; line-height: 1.2; font-weight: 670; letter-spacing: -.65px; }
+h2 { font-size: 17px; font-weight: 650; }
+.subtitle, .muted { color: var(--muted); }
+.subtitle { margin-top: 6px; }
+.demo { color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; white-space: nowrap; }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.range { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+.range button, .plain { background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 5px 9px; color: var(--muted); }
+.range button[aria-pressed="true"] { color: var(--accent); background: var(--active); }
+.range button:hover, .plain:hover { color: var(--text); }
+input, select { min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+input { margin-left: auto; flex: 0 1 210px; }
+input::placeholder { color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.card, .listing, .details, .overview { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.card { padding: 13px 15px; }
+.card strong { display: block; margin-top: 3px; font-size: 24px; letter-spacing: -.4px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.card:first-child strong { color: var(--accent); }
+.card span { color: var(--muted); }
+.listing { overflow: auto; }
+.list-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 15px; gap: 9px; }
+table { width: 100%; min-width: 670px; border-collapse: collapse; }
+th, td { text-align: left; border-top: 1px solid var(--line); padding: 11px 13px; vertical-align: middle; }
+th { padding-top: 6px; padding-bottom: 6px; color: var(--muted); background: var(--raised); font-size: 12px; font-weight: 600; }
+th button { font-weight: inherit; padding-inline: 0 !important; }
+th button span { color: var(--accent); }
+td.number, th.number { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.when { white-space: nowrap; }
+.file { border: 0; background: transparent; padding: 0; text-align: left; color: var(--text); font-weight: 650; overflow-wrap: anywhere; }
+.file:hover { color: var(--accent); }
+tr.selected, tbody tr:hover { background: var(--raised); }
+.path { display: block; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.empty { padding: 22px 15px; }
+.details { padding: 15px; margin-top: 12px; }
+.details-title { display: flex; justify-content: space-between; align-items: center; }
+dl { margin: 9px 0 0; display: grid; grid-template-columns: max-content minmax(0,1fr); gap: 6px 18px; }
+dt { color: var(--muted); }
+dd { margin: 0; overflow-wrap: anywhere; }
+.overview { padding: 15px; margin-bottom: 12px; }
+meter { display: block; width: 100%; height: 14px; margin: 8px 0; accent-color: var(--accent); }
+[hidden] { display: none !important; }
+@media (max-width: 850px) {
+  .app { grid-template-columns: 164px minmax(0, 1fr); }
+  input { margin-left: 0; }
+}
+@media (max-width: 620px) {
+  .app { display: block; }
+  aside { border-right: 0; border-bottom: 1px solid var(--line); padding: 12px; }
+  .brand { margin: 0 0 10px; }
+  nav { display: flex; }
+  .scope { display: none; }
+  main { padding: 19px 12px; }
+  .cards { grid-template-columns: 1fr; gap: 7px; }
+  h1 { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><div class="mark" aria-hidden="true"><span></span><span></span><span></span></div>WinDirStat</div>
+    <nav aria-label="Views">
+      <button id="drives-nav" type="button">Disk Overview</button>
+      <button id="recent-nav" type="button" aria-current="page">Recent Files</button>
+    </nav>
+    <div class="scope">Monitored drives<strong>System (C:) · Projects (D:)</strong></div>
+  </aside>
+  <main>
+    <header><div><h1 id="title">Recent Files</h1><p id="subtitle" class="subtitle">See what was added and where it landed.</p></div><span class="demo">Sample data</span></header>
+    <section id="overview" hidden aria-label="Disk usage">
+      <article class="overview"><h2>System (C:)</h2><meter value="318" max="500" aria-label="System drive used">318 / 500 GB</meter><p class="muted">318 GB used · 182 GB free</p></article>
+      <article class="overview"><h2>Projects (D:)</h2><meter value="742" max="1000" aria-label="Projects drive used">742 / 1,000 GB</meter><p class="muted">742 GB used · 258 GB free</p></article>
+    </section>
+    <section id="recent" aria-label="Recent file activity">
+      <div class="filters">
+        <div class="range" role="group" aria-label="Time range">
+          <button type="button" data-hours="1" aria-pressed="false">1 hour</button>
+          <button type="button" data-hours="24" aria-pressed="true">24 hours</button>
+          <button type="button" data-hours="168" aria-pressed="false">7 days</button>
+        </div>
+        <select id="drive" aria-label="Drive"><option value="">All drives</option><option value="C:">System (C:)</option><option value="D:">Projects (D:)</option></select>
+        <select id="size" aria-label="Minimum size"><option value="0">Any size</option><option value="100">100 MB or more</option><option value="1000">1 GB or more</option></select>
+        <input id="query" type="search" aria-label="Search files, folders, or apps" placeholder="Search files, folders, or apps">
+      </div>
+      <div class="cards" aria-label="Filtered totals">
+        <div class="card"><span>Current size of new files</span><strong id="total"></strong></div>
+        <div class="card"><span>Files added</span><strong id="count"></strong></div>
+        <div class="card"><span>Largest addition</span><strong id="largest"></strong><span id="largest-name"></span></div>
+      </div>
+      <div class="listing">
+        <div class="list-head"><h2>New files</h2><span id="results" class="muted" role="status"></span></div>
+        <table aria-label="New files">
+          <thead><tr>
+            <th scope="col">File and location</th>
+            <th scope="col" class="number" id="size-heading"><button type="button" class="plain" data-sort="size">Size <span aria-hidden="true"></span></button></th>
+            <th scope="col" id="age-heading" aria-sort="descending"><button type="button" class="plain" data-sort="age">Added <span aria-hidden="true">↓</span></button></th>
+            <th scope="col">Writing app</th>
+          </tr></thead>
+          <tbody id="files"></tbody>
+        </table>
+        <p class="empty muted" id="empty" hidden>No new files match these filters.</p>
+      </div>
+      <section class="details" id="details" aria-labelledby="detail-title" hidden>
+        <div class="details-title"><h2 id="detail-title"></h2><button type="button" id="close-details" class="plain">Close</button></div>
+        <dl><dt>Location</dt><dd id="detail-path"></dd><dt>Current size</dt><dd id="detail-size"></dd><dt>Added</dt><dd id="detail-age"></dd><dt>Writing app</dt><dd id="detail-app"></dd></dl>
+      </section>
+    </section>
+  </main>
+</div>
+<script>
+const samples = [
+  { name: 'preview-014.mov', folder: 'D:\\Projects\\Video\\Exports', size: 4820, age: 12, app: 'Adobe Media Encoder' },
+  { name: 'download-cache.bin', folder: 'C:\\ProgramData\\Package Cache', size: 640, age: 28, app: '' },
+  { name: 'game-patch-32.pak', folder: 'D:\\SteamLibrary\\steamapps\\downloading', size: 2160, age: 52, app: 'Steam' },
+  { name: 'interview-audio.wav', folder: 'D:\\Projects\\Video\\Audio', size: 187, age: 114, app: '' },
+  { name: 'camera-import.zip', folder: 'C:\\Users\\Demo\\Downloads', size: 3210, age: 393, app: 'Firefox' },
+  { name: 'update-payload.cab', folder: 'C:\\Windows\\SoftwareDistribution\\Download', size: 916, age: 922, app: '' },
+  { name: 'project-backup.zip', folder: 'D:\\Backups', size: 8020, age: 1830, app: 'File Explorer' },
+  { name: 'meeting-notes.pdf', folder: 'C:\\Users\\Demo\\Downloads', size: 3.6, age: 4050, app: 'Firefox' },
+  { name: 'clip-proxies.zip', folder: 'D:\\Projects\\Video\\Media', size: 2850, age: 7350, app: '' },
+];
+
+const $ = (id) => document.getElementById(id);
+const state = { hours: 24, sort: 'age', descending: false, selected: null };
+const formatSize = (mb) => mb >= 1000
+  ? (mb / 1000).toLocaleString('en', { maximumFractionDigits: 2 }) + ' GB'
+  : mb.toLocaleString('en', { maximumFractionDigits: 1 }) + ' MB';
+const when = (age) => {
+  if (age < 60) return age + ' min ago';
+  if (age < 1440) return Math.floor(age / 60) + ' hr ago';
+  const days = Math.floor(age / 1440);
+  return days + (days === 1 ? ' day ago' : ' days ago');
+};
+
+function visibleFiles(files, filters) {
+  const query = filters.query.trim().toLowerCase();
+  const matching = files.filter(file => file.age <= filters.hours * 60 &&
+    file.folder.startsWith(filters.drive) && file.size >= filters.minimumSize &&
+    [file.name, file.folder, file.app || 'Unknown'].some(value => value.toLowerCase().includes(query)));
+  const direction = filters.descending ? -1 : 1;
+  return matching.sort((a, b) => direction * (a[filters.sort] - b[filters.sort]));
+}
+
+function render() {
+  const files = visibleFiles(samples, {
+    ...state, drive: $('drive').value, minimumSize: Number($('size').value), query: $('query').value
+  });
+  if (!files.includes(state.selected)) state.selected = null;
+  const largest = files.reduce((biggest, file) => !biggest || file.size > biggest.size ? file : biggest, null);
+  $('total').textContent = formatSize(files.reduce((sum, file) => sum + file.size, 0));
+  $('count').textContent = files.length;
+  $('largest').textContent = largest ? formatSize(largest.size) : '—';
+  $('largest-name').textContent = largest?.name ?? '';
+  $('results').textContent = files.length + (files.length === 1 ? ' result' : ' results');
+  $('empty').hidden = files.length > 0;
+  const rows = files.map(file => {
+    const row = document.createElement('tr');
+    row.classList.toggle('selected', state.selected === file);
+    const select = document.createElement('button');
+    select.type = 'button';
+    select.className = 'file';
+    select.textContent = file.name;
+    select.setAttribute('aria-expanded', String(state.selected === file));
+    select.setAttribute('aria-controls', 'details');
+    select.addEventListener('click', () => {
+      state.selected = state.selected === file ? null : file;
+      showDetails();
+    });
+    const path = document.createElement('span');
+    path.className = 'path';
+    path.textContent = file.folder;
+    row.insertCell().append(select, path);
+    const size = row.insertCell();
+    size.className = 'number';
+    size.textContent = formatSize(file.size);
+    const added = row.insertCell();
+    added.className = 'when';
+    added.textContent = when(file.age);
+    row.insertCell().textContent = file.app || 'Unknown';
+    row.file = file;
+    return row;
+  });
+  $('files').replaceChildren(...rows);
+  for (const button of document.querySelectorAll('[data-sort]')) {
+    const active = button.dataset.sort === state.sort;
+    const heading = button.closest('th');
+    const down = button.dataset.sort === 'age' ? !state.descending : state.descending;
+    if (active) heading.setAttribute('aria-sort', down ? 'descending' : 'ascending');
+    else heading.removeAttribute('aria-sort');
+    button.querySelector('span').textContent = active ? (down ? '↓' : '↑') : '';
+  }
+  showDetails();
+}
+
+function showDetails() {
+  const file = state.selected;
+  $('details').hidden = !file;
+  for (const row of $('files').rows) {
+    const selected = row.file === file;
+    row.classList.toggle('selected', selected);
+    row.querySelector('button').setAttribute('aria-expanded', String(selected));
+  }
+  if (!file) return;
+  $('detail-title').textContent = file.name;
+  $('detail-path').textContent = file.folder + '\\' + file.name;
+  $('detail-size').textContent = formatSize(file.size);
+  $('detail-age').textContent = when(file.age);
+  $('detail-app').textContent = file.app || 'Unknown · no process information captured';
+}
+
+function showView(recent) {
+  $('overview').hidden = recent;
+  $('recent').hidden = !recent;
+  $('title').textContent = recent ? 'Recent Files' : 'Disk Overview';
+  $('subtitle').textContent = recent ? 'See what was added and where it landed.' : 'See how much space is available on each drive.';
+  const active = recent ? 'recent-nav' : 'drives-nav';
+  const inactive = recent ? 'drives-nav' : 'recent-nav';
+  $(active).setAttribute('aria-current', 'page');
+  $(inactive).removeAttribute('aria-current');
+}
+
+for (const button of document.querySelectorAll('[data-hours]')) {
+  button.addEventListener('click', () => {
+    state.hours = Number(button.dataset.hours);
+    for (const option of document.querySelectorAll('[data-hours]')) {
+      option.setAttribute('aria-pressed', String(option === button));
+    }
+    render();
+  });
+}
+for (const button of document.querySelectorAll('[data-sort]')) {
+  button.addEventListener('click', () => {
+    state.descending = state.sort === button.dataset.sort ? !state.descending : button.dataset.sort === 'size';
+    state.sort = button.dataset.sort;
+    render();
+  });
+}
+$('drive').addEventListener('change', render);
+$('size').addEventListener('change', render);
+$('query').addEventListener('input', render);
+$('close-details').addEventListener('click', () => {
+  const row = Array.from($('files').rows).find(row => row.file === state.selected);
+  state.selected = null;
+  showDetails();
+  row?.querySelector('button').focus();
+});
+$('drives-nav').addEventListener('click', () => showView(false));
+$('recent-nav').addEventListener('click', () => showView(true));
+render();
+</script>
+</body>
+</html>
