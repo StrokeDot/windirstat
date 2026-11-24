@@ -29,7 +29,7 @@ jobs:
           $msbuild = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
           if (-not $msbuild) { throw 'Visual Studio MSBuild was not found.' }
           $llvm = Split-Path (Get-Command clang.exe -ErrorAction Stop).Source
-          & $msbuild windirstat\windirstat.vcxproj /m /p:Configuration=Release /p:Platform=x64 "/p:WslLLVMDirectory=$llvm/"
+          & $msbuild windirstat.sln /m /p:Configuration=Release /p:Platform=x64 "/p:WslLLVMDirectory=$llvm/"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build and verify the x64 installer
