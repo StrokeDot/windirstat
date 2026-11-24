@@ -205,7 +205,7 @@ function Generate-WxlFiles {
         foreach ($line in $lines) {
             if ($line -match '^MSI_([^=]+)=(.*)$') {
                 $key = $Matches[1]
-                $value = $Matches[2]
+                $value = $Matches[2].Replace('WinDirStat', 'Smart Storage')
                 $msiKeys[$key] = $value
             }
         }

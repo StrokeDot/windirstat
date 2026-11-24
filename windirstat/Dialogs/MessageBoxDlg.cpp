@@ -397,7 +397,7 @@ int ShowMessageBox(const std::wstring& message, const UINT type)
 {
     if (!DarkMode::IsDarkModeActive())
     {
-        return MessageBoxW(GetDialogOwner(), message.c_str(), L"WinDirStat", type);
+        return MessageBoxW(GetDialogOwner(), message.c_str(), L"Smart Storage", type);
     }
 
     return ShowMessageBox(nullptr, message, wds::strWinDirStat, type);

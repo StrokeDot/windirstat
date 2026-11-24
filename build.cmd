@@ -1,5 +1,5 @@
 @ECHO OFF
-TITLE Building WinDirStat
+TITLE Building Smart Storage
 SETLOCAL EnableExtensions EnableDelayedExpansion
 
 :: let Windows PowerShell initialize its own module paths
@@ -25,8 +25,8 @@ SET STOREBLDDIR=%BLDDIR%\store
 
 :: cert info to use for signing
 SET "TSAURL=http://time.certum.pl/"
-SET "LIBNAME=WinDirStat"
-SET "LIBURL=https://github.com/WinDirStat/WinDirStat"
+SET "LIBNAME=Smart Storage"
+SET "LIBURL=https://github.com/StrokeDot/windirstat"
 
 :: prepend 7-Zip and system paths
 IF EXIST "%ProgramFiles%\7-Zip" SET PATH=%ProgramFiles%\7-Zip;%PATH%
@@ -50,7 +50,7 @@ IF EXIST "%WindowsSdkVerBinPath%\x64" msbuild "%BASEDIR%\windirstat.sln" /p:Conf
 IF EXIST "%WindowsSdkVerBinPath%\arm64" msbuild "%BASEDIR%\windirstat.sln" /p:Configuration=Release /t:Clean;Build /p:Platform=ARM64,ExternalCompilerOptions=/DPRODUCTION=%PRODUCTION%
 
 :: try signing the main executables
-signtool sign /fd sha256 /tr %TSAURL% /td sha256 /d %LIBNAME% /du %LIBURL% "%BLDDIR%\*.exe"
+signtool sign /fd sha256 /tr %TSAURL% /td sha256 /d "%LIBNAME%" /du %LIBURL% "%BLDDIR%\*.exe"
 IF ERRORLEVEL 1 ECHO Executable signing failed; continuing without signed executables.
 
 :: build the msi
@@ -63,7 +63,7 @@ FOR %%A IN (arm64 x86 x64) DO (
    IF NOT EXIST "%PUBDIR%\%%A" MKDIR "%PUBDIR%\%%A"
    COPY /Y "%BLDDIR%\WinDirStat_%%A.exe" "%PUBDIR%\%%A\WinDirStat.exe"
    COPY /Y "%BLDDIR%\WinDirStat_%%A.pdb" "%PUBDIR%\%%A\WinDirStat.pdb"
-   COPY /Y "%BLDDIR%\WinDirStat-%%A.msi" "%PUBDIR%"
+   COPY /Y "%BLDDIR%\SmartStorage-%%A.msi" "%PUBDIR%"
 )
 
 :: build the msix files
@@ -71,7 +71,7 @@ FOR %%A IN (arm64 x86 x64) DO (
 IF ERRORLEVEL 1 EXIT /B 1
 
 :: sign the msi, msix, and msixbundle
-signtool sign /fd sha256 /tr %TSAURL% /td sha256 /d %LIBNAME% /du %LIBURL% "%PUBDIR%\*.msi*"
+signtool sign /fd sha256 /tr %TSAURL% /td sha256 /d "%LIBNAME%" /du %LIBURL% "%PUBDIR%\*.msi*"
 IF ERRORLEVEL 1 ECHO MSI/MSIX signing failed; continuing without a signed MSI.
 
 :: archive executables and debug files

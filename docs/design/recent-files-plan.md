@@ -12,7 +12,7 @@ Support last hour, last 24 hours, and last 7 days, plus drive, minimum-size, and
 
 ## App and installer branding
 
-Smart Storage is the displayed product name. Use the selected logo for the multi-size Windows executable icon, setup and installed shortcuts, and Windows' installed-app listing. Apply the selected logo and palette to the prototype before carrying them into the desktop interface. Use the accent for active navigation, focus, and storage totals. Check that the logo reads clearly at 16, 24, and 32 pixels and that text has sufficient contrast.
+Smart Storage is the displayed product name. Use the selected Open Box logo for the multi-size Windows executable icon, setup and installed shortcuts, and Windows' installed-app listing. Use the Open Box palette across the prototype and native dark theme. Use the accent for active navigation, focus, and storage totals. Check that the logo reads clearly at 16, 24, and 32 pixels and that text has sufficient contrast.
 
 The current executable icon is declared in `windirstat/windirstat.rc` and the MSI points at the same icon through `setup/msi/Defines.wxi`. Update the product display name in the application resources and installer metadata. Verify the finished MSI and installed shortcuts on a machine that also has upstream WinDirStat installed.
 

@@ -242,7 +242,7 @@ static std::wstring RemoteCredentialName(RemoteTarget target)
 {
     if (target.protocol != RemoteProtocol::WebDav) target.prefix.clear();
     target.EndCollection();
-    return L"WinDirStat/" + target.ToString();
+    return L"SmartStorage/" + target.ToString();
 }
 
 RemoteCredentials StorageSource::GetCredentials(const RemoteTarget& target)

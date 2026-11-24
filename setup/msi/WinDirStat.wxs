@@ -10,11 +10,11 @@
     <MajorUpgrade AllowSameVersionUpgrades="$(var.AllowSameVersionUpgrades)" IgnoreLanguage="yes"
                   DowngradeErrorMessage="!(loc.DowngradeError)" Schedule="afterInstallInitialize"/>
     <!-- Icon -->
-    <Icon Id="WinDirStat.ico" SourceFile="$(var.IconFilePath)"/>
+    <Icon Id="SmartStorage.ico" SourceFile="$(var.IconFilePath)"/>
     <!-- ARP Properties -->
     <Property Id="ARPCONTACT" Value="$(var.Contact)"/>
     <Property Id="ARPHELPLINK" Value="$(var.HelpLink)"/>
-    <Property Id="ARPPRODUCTICON" Value="WinDirStat.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="SmartStorage.ico"/>
     <Property Id="ARPREADME" Value="$(var.ReadMeLink)"/>
     <Property Id="ARPSIZE" Value="$(var.EstimatedSize)"/>
     <Property Id="ARPURLINFOABOUT" Value="$(var.AboutLink)"/>
@@ -30,34 +30,29 @@
     <WixVariable Id="WixUIBannerBmp" Value="$(var.BannerBmp)"/>
     <WixVariable Id="WixUIDialogBmp" Value="$(var.DialogBmp)"/>
     <!-- Features -->
-    <Feature Id="FT_Core" Title="WinDirStat" Level="1" Description="Includes WinDirStat">
+    <Feature Id="FT_Core" Title="$(var.ProductName)" Level="1" Description="Includes $(var.ProductName)">
       <ComponentRef Id="Component_Main"/>
       <ComponentRef Id="Component_ContextMenuEntry"/>
       <ComponentRef Id="Component_DesktopShortcut"/>
       <ComponentRef Id="Component_AddToPath"/>
     </Feature>
-    <!-- Custom Actions -->
-    <CustomAction Id="DoLegacyUninstall" FileRef="File_Main" ExeCommand="/LegacyUninstall" Execute="deferred" Impersonate="no" Return="ignore"/>
-    <InstallExecuteSequence>
-      <Custom Action="DoLegacyUninstall" After="InstallFiles" Condition="NOT REMOVE"/>
-    </InstallExecuteSequence>
     <!-- Properties for Desktop Shortcut Detection -->
     <Property Id="DESKTOP_SHORTCUT_LOCATE">
       <DirectorySearch Id="DesktopFolderSearch" Path="[DesktopFolder]">
-        <FileSearch Name="WinDirStat.lnk"/>
+        <FileSearch Name="Smart Storage.lnk"/>
       </DirectorySearch>
     </Property>
     <SetProperty Id="DESKTOP_SHORTCUT" After="AppSearch" Value="1" Sequence="first" Condition="((WIX_UPGRADE_DETECTED &lt;&gt; &quot;&quot; AND DESKTOP_SHORTCUT_LOCATE &lt;&gt; &quot;&quot;) OR ENABLE_SHORTCUT = 1)"/>
     <!-- Properties for Context Menu Detection -->
     <Property Id="CONTEXT_MENU_LOCATE">
-      <RegistrySearch Id="ContextMenuSearch" Type="raw" Root="HKCR" Key="Directory\shell\WinDirStat" Name="Icon"/>
+      <RegistrySearch Id="ContextMenuSearch" Type="raw" Root="HKCR" Key="Directory\shell\SmartStorage" Name="Icon"/>
     </Property>
     <SetProperty Id="CONTEXTMENU_ENTRY" After="AppSearch" Value="1" Sequence="first" Condition="((WIX_UPGRADE_DETECTED &lt;&gt; &quot;&quot; AND CONTEXT_MENU_LOCATE &lt;&gt; &quot;&quot;) OR NOT WIX_UPGRADE_DETECTED) AND DISABLE_CONTEXTMENU &lt;&gt; 1"/>
     <!-- Properties for Add to PATH Detection -->
     <Property Id="SYSTEM_PATH">
       <RegistrySearch Id="AddToPathSearch" Type="raw" Root="HKLM" Key="SYSTEM\CurrentControlSet\Control\Session Manager\Environment" Name="Path"/>
     </Property>
-    <SetProperty Id="ADD_TO_PATH" After="AppSearch" Value="1" Sequence="first" Condition="(WIX_UPGRADE_DETECTED &lt;&gt; &quot;&quot; AND SYSTEM_PATH &gt;&lt; &quot;WinDirStat&quot;) OR ENABLE_ADD_TO_PATH = 1"/>
+    <SetProperty Id="ADD_TO_PATH" After="AppSearch" Value="1" Sequence="first" Condition="(WIX_UPGRADE_DETECTED &lt;&gt; &quot;&quot; AND SYSTEM_PATH &gt;&lt; &quot;Smart Storage&quot;) OR ENABLE_ADD_TO_PATH = 1"/>
     <!-- Custom UI Dialog -->
     <UI Id="InstallerUI">
       <Dialog Id="OptionsDlg" Width="370" Height="270" Title="!(loc.OptionsDlgTitle)">
@@ -83,45 +78,45 @@
     </UI>
     <!-- Directory Structure -->
     <StandardDirectory Id="$(var.ProgramFilesNative)">
-      <Directory Id="INSTALLFOLDER" Name="WinDirStat"/>
+      <Directory Id="INSTALLFOLDER" Name="$(var.ProductFolder)"/>
     </StandardDirectory>
     <StandardDirectory Id="ProgramMenuFolder"/>
     <StandardDirectory Id="TempFolder"/>
     <StandardDirectory Id="DesktopFolder"/>
     <!-- Components -->
     <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="Component_Main" Guid="{48E1104D-2466-4ADC-8BC0-521B6EBA8621}">
-        <File Id="File_Main" Source="$(var.ProductBinariesDir)\$(var.WinDirStatExe)" Name="WinDirStat.exe">
-          <Shortcut Id="File_Main_Shortcut" Directory="ProgramMenuFolder" WorkingDirectory="INSTALLFOLDER" Name="WinDirStat">
-            <ShortcutProperty Key="System.AppUserModel.ID" Value="WinDirStat"/>
+      <Component Id="Component_Main" Guid="{A95F3B80-4C48-41E0-9480-35C976F6164F}">
+        <File Id="File_Main" Source="$(var.ProductBinariesDir)\$(var.WinDirStatExe)" Name="SmartStorage.exe">
+          <Shortcut Id="File_Main_Shortcut" Directory="ProgramMenuFolder" WorkingDirectory="INSTALLFOLDER" Name="$(var.ProductName)" Icon="SmartStorage.ico">
+            <ShortcutProperty Key="System.AppUserModel.ID" Value="StrokeDot.SmartStorage"/>
           </Shortcut>
         </File>
-        <RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\WinDirStat.exe"
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\SmartStorage.exe"
                        Value="[#File_Main]" Type="string"/>
       </Component>
-      <Component Id="Component_AddToPath" Guid="{D5A7D5D0-3D45-4A41-8F4F-6F8E6C2A9F13}" Condition="ADD_TO_PATH">
+      <Component Id="Component_AddToPath" Guid="{4ABA1418-B928-4DE1-A636-12E82CA68B36}" Condition="ADD_TO_PATH">
         <Environment Id="Env_AddWinDirStatToPath" Name="PATH" Value="[INSTALLFOLDER]" Permanent="no" Part="last" Action="set" System="yes"/>
       </Component>
     </DirectoryRef>
-    <Component Id="Component_ContextMenuEntry" Directory="TARGETDIR" Guid="{7B6A2A2E-BF9E-4F37-8EAA-0E7E6B98D87A}" Condition="CONTEXTMENU_ENTRY">
-      <RegistryKey Root="HKCR" Key="Directory\shell\WinDirStat" ForceDeleteOnUninstall="yes">
-        <RegistryValue Name="Icon" Value="[INSTALLFOLDER]WinDirStat.exe" Type="string"/>
-        <RegistryValue Value="WinDirStat" Type="string"/>
+    <Component Id="Component_ContextMenuEntry" Directory="TARGETDIR" Guid="{7BA207E7-F849-4EEA-859C-9DDD44B0904B}" Condition="CONTEXTMENU_ENTRY">
+      <RegistryKey Root="HKCR" Key="Directory\shell\SmartStorage" ForceDeleteOnUninstall="yes">
+        <RegistryValue Name="Icon" Value="[INSTALLFOLDER]SmartStorage.exe" Type="string"/>
+        <RegistryValue Value="$(var.ProductName)" Type="string"/>
         <RegistryKey Key="command">
-          <RegistryValue Value="&quot;[INSTALLFOLDER]WinDirStat.exe&quot; &quot;%1&quot;" Type="string"/>
+          <RegistryValue Value="&quot;[INSTALLFOLDER]SmartStorage.exe&quot; &quot;%1&quot;" Type="string"/>
         </RegistryKey>
       </RegistryKey>
-      <RegistryKey Root="HKCR" Key="Drive\shell\WinDirStat" ForceDeleteOnUninstall="yes">
-        <RegistryValue Name="Icon" Value="[INSTALLFOLDER]WinDirStat.exe" Type="string"/>
-        <RegistryValue Value="WinDirStat" Type="string"/>
+      <RegistryKey Root="HKCR" Key="Drive\shell\SmartStorage" ForceDeleteOnUninstall="yes">
+        <RegistryValue Name="Icon" Value="[INSTALLFOLDER]SmartStorage.exe" Type="string"/>
+        <RegistryValue Value="$(var.ProductName)" Type="string"/>
         <RegistryKey Key="command">
-          <RegistryValue Value="&quot;[INSTALLFOLDER]WinDirStat.exe&quot; %1" Type="string"/>
+          <RegistryValue Value="&quot;[INSTALLFOLDER]SmartStorage.exe&quot; %1" Type="string"/>
         </RegistryKey>
       </RegistryKey>
     </Component>
-    <Component Id="Component_DesktopShortcut" Directory="DesktopFolder" Guid="{82879C46-B937-405B-8931-EB8FE3CF606A}" Condition="DESKTOP_SHORTCUT">
-      <Shortcut Id="ConfigDesktopShortcut" Name="WinDirStat" WorkingDirectory="INSTALLFOLDER" Target="[INSTALLFOLDER]WinDirStat.exe"/>
-      <RegistryValue Root="HKCU" Key="SOFTWARE\WinDirStat\WinDirStat" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes"/>
+    <Component Id="Component_DesktopShortcut" Directory="DesktopFolder" Guid="{25127026-1A17-4CD9-9272-EC38DDED3785}" Condition="DESKTOP_SHORTCUT">
+      <Shortcut Id="ConfigDesktopShortcut" Name="$(var.ProductName)" WorkingDirectory="INSTALLFOLDER" Target="[INSTALLFOLDER]SmartStorage.exe" Icon="SmartStorage.ico"/>
+      <RegistryValue Root="HKCU" Key="$(var.ProductRegKeyPath)" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes"/>
     </Component>
   </Package>
 </Wix>

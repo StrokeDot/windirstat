@@ -30,7 +30,6 @@ namespace wds
     inline constexpr auto strAccessibilityKey = L"Software\\Microsoft\\Accessibility";
     inline constexpr auto strExplorerKey      = L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer";
     inline constexpr auto strThemesKey        = L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
-    inline constexpr auto strUninstall        = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinDirStat";
 
     inline constexpr auto strInvalidAttributes     = L"??????";
     inline constexpr auto chrAttributeReadonly     = L'R'; /*FILE_ATTRIBUTE_READONLY*/
@@ -43,7 +42,8 @@ namespace wds
     inline constexpr auto chrAttributeEncrypted    = L'E'; /*FILE_ATTRIBUTE_ENCRYPTED*/
     inline constexpr auto chrAttributeSparse       = L'Z'; /*FILE_ATTRIBUTE_SPARSE*/
 
-    inline constexpr auto strWinDirStat = L"WinDirStat";
+    inline constexpr auto strWinDirStat = L"Smart Storage";
+    inline constexpr auto strShellVerb = L"SmartStorage";
     inline constexpr std::wstring_view strAlpha{ L"ABCDEFGHIJKLMNOPQRSTUVWXYZ" };
     inline constexpr int alphaSize = std::ssize(strAlpha);
 

@@ -346,7 +346,7 @@ public:
     void UpdateLayout();
     void SetDocumentTitle(const std::wstring_view docName = {})
     {
-        const std::wstring prefix = m_strTitle.empty() ? L"WinDirStat" : m_strTitle;
+        const std::wstring prefix = m_strTitle.empty() ? L"Smart Storage" : m_strTitle;
         const std::wstring t = !docName.empty() ? prefix + L" - " + std::wstring(docName) : prefix;
         if (m_hWnd) SetWindowTextW(m_hWnd, t.c_str());
     }

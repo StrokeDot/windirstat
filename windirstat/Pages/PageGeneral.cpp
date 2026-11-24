@@ -14,7 +14,7 @@ CPageGeneral::CPageGeneral() : MessageTarget(IDD, L"IDS_PAGE_GENERAL_TITLE")
 bool CPageGeneral::IsContextMenuRegistered(const HKEY root)
 {
     return CRegKey().Open(root, std::format(LR"(Software\Classes\Drive\shell\{})",
-        wds::strWinDirStat).c_str(), KEY_READ) == ERROR_SUCCESS;
+        wds::strShellVerb).c_str(), KEY_READ) == ERROR_SUCCESS;
 }
 
 bool CPageGeneral::SetContextMenuRegistration(const bool enable)
@@ -25,7 +25,7 @@ bool CPageGeneral::SetContextMenuRegistration(const bool enable)
     for (const std::wstring& rootSubKey : { L"Drive", L"Directory" })
     {
         const std::wstring baseKey = std::format(LR"(Software\Classes\{}\shell\{})",
-            rootSubKey, wds::strWinDirStat);
+            rootSubKey, wds::strShellVerb);
 
         if (!enable)
         {

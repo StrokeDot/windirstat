@@ -9,23 +9,23 @@
     <?endif ?>
     <?if $(var.RELTYPE) = PRODUCTION ?>
         <?define ProductVersion =           "$(var.MAJVER).$(var.MINVER).$(var.PATCH)"?>
-        <?define UpgradeCode =              "46F106C9-090C-43D0-8815-D03BA9FA55A9"?>
-        <?define UpgradeCodeAlt =           "E211CCFB-D706-4919-B2FF-0F7F426EA27B"?>
+        <?define UpgradeCode =              "E119436B-4696-4D57-94B0-09CBF6592FE9"?>
+        <?define UpgradeCodeAlt =           "F254AD7A-05B6-498A-A01D-DC845C134B59"?>
     <?else ?>
         <?define ProductVersion =           "$(var.MAJVER).$(var.MINVER).$(var.PATCH).$(var.BUILD)"?>
-        <?define UpgradeCode =              "E211CCFB-D706-4919-B2FF-0F7F426EA27B"?>
-        <?define UpgradeCodeAlt =           "46F106C9-090C-43D0-8815-D03BA9FA55A9"?>
+        <?define UpgradeCode =              "F254AD7A-05B6-498A-A01D-DC845C134B59"?>
+        <?define UpgradeCodeAlt =           "E119436B-4696-4D57-94B0-09CBF6592FE9"?>
     <?endif ?>
 
 	<!-- Product and Company information -->
-    <?define ProductName =              "WinDirStat"?>
-    <?define ProductFolder =            "WinDirStat"?>
-    <?define Manufacturer =             "WinDirStat Team"?>
-    <?define Contact =                  "team@windirstat.net"?>
-    <?define AboutLink =                "https://windirstat.net"?>
-    <?define HelpLink =                 "https://windirstat.net"?>
-    <?define UpdateLink =               "https://windirstat.net"?>
-    <?define ReadMeLink =               "https://windirstat.net"?>
+    <?define ProductName =              "Smart Storage"?>
+    <?define ProductFolder =            "Smart Storage"?>
+    <?define Manufacturer =             "StrokeDot"?>
+    <?define Contact =                  "https://github.com/StrokeDot"?>
+    <?define AboutLink =                "https://github.com/StrokeDot/windirstat"?>
+    <?define HelpLink =                 "https://github.com/StrokeDot/windirstat"?>
+    <?define UpdateLink =               "https://github.com/StrokeDot/windirstat"?>
+    <?define ReadMeLink =               "https://github.com/StrokeDot/windirstat"?>
     <?define IconFilePath =             "..\..\windirstat\res\WinDirStat.ico" ?>
 
     <?define ProductBinariesDir =       "..\..\build"?>
@@ -44,7 +44,7 @@
     <?define ProgramFilesNative = "ProgramFilesFolder" ?>
     <?endif ?>
     <!-- Default Registry Key, in which most registry settings are saved. -->
-    <?define ProductRegKeyPath = "SOFTWARE\WinDirStat\WinDirStat"?>
+    <?define ProductRegKeyPath = "SOFTWARE\StrokeDot\SmartStorage"?>
     <?if $(var.RELTYPE) = PRODUCTION ?>
 	<?define AllowSameVersionUpgrades = "no"?>
     <?else ?>

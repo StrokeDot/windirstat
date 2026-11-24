@@ -79,21 +79,21 @@ COLORREF DarkMode::Color(const ColorRole role)
     if (!s_darkModeEnabled) return GetSysColor(std::to_underlying(role));
     switch (role)
     {
-    case ColorRole::Edge: return RGB(70, 70, 70);
-    case ColorRole::Light: return RGB(60, 60, 60);
-    case ColorRole::Shadow: return RGB(20, 20, 20);
-    case ColorRole::Desktop: return RGB(25, 25, 25);
-    case ColorRole::Control: return RGB(45, 45, 45);
+    case ColorRole::Edge: return RGB(55, 79, 66);
+    case ColorRole::Light: return RGB(40, 65, 52);
+    case ColorRole::Shadow: return RGB(11, 24, 17);
+    case ColorRole::Desktop: return RGB(16, 25, 19);
+    case ColorRole::Control: return RGB(29, 51, 40);
     case ColorRole::ControlText:
     case ColorRole::MenuText:
-    case ColorRole::WindowText: return RGB(220, 220, 220);
-    case ColorRole::DisabledText: return RGB(120, 120, 120);
-    case ColorRole::Selection: return RGB(0, 120, 215);
+    case ColorRole::WindowText: return RGB(233, 247, 239);
+    case ColorRole::DisabledText: return RGB(152, 176, 161);
+    case ColorRole::Selection: return RGB(26, 104, 67);
     case ColorRole::SelectionText: return RGB(255, 255, 255);
-    case ColorRole::Menu: return RGB(44, 44, 44);
-    case ColorRole::MenuBar: return RGB(30, 30, 30);
-    case ColorRole::Window: return RGB(32, 32, 32);
-    case ColorRole::Frame: return RGB(50, 50, 50);
+    case ColorRole::Menu: return RGB(27, 45, 36);
+    case ColorRole::MenuBar: return RGB(17, 32, 25);
+    case ColorRole::Window: return RGB(22, 39, 31);
+    case ColorRole::Frame: return RGB(44, 68, 55);
     }
     return GetSysColor(std::to_underlying(role));
 }
@@ -334,7 +334,7 @@ void DarkMode::DrawFocusRect(CDC* pdc, const CRect& rc)
 
     // In dark mode, draw a dotted rectangle with a visible light color
     // Standard DrawFocusRect uses XOR which is nearly invisible on dark backgrounds
-    const CPen pen(PS_DOT, 1, RGB(120, 120, 120));
+    const CPen pen(PS_DOT, 1, RGB(152, 176, 161));
     GdiObjectSelection sopen(pdc, &pen);
     StockObjectSelection sobrush(pdc, NULL_BRUSH);
     ScopedBkMode sbm(pdc, TRANSPARENT);
