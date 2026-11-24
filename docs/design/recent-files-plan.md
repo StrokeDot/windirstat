@@ -1,4 +1,4 @@
-# Recent Files and interface redesign
+# Smart Storage interface and file activity
 
 Open `recent-files-preview.html` in a browser to try the layout with sample data.
 
@@ -9,6 +9,12 @@ Use the compact navigation and tables from [StrokeDot/simplewall](https://github
 Use Added and Deleted views. Both show the file name, location, event time, size when known, and the app responsible when captured. In Deleted, show the original path, the last known size, and one of three statuses. Use Moved to Recycle Bin, Deleted permanently, or Deletion unconfirmed. Permanent deletion includes a direct removal that bypasses the bin and a later purge of a recycled item. Show the sum of known sizes alongside the count of files with unknown sizes. Label this as historical file size.
 
 Support last hour, last 24 hours, and last 7 days, plus drive, minimum-size, and text filters. Sort by event time or size. A file opens a details area with its full path. The default view is Added, showing the last 24 hours with newest first.
+
+## App and installer branding
+
+Smart Storage is the displayed product name. Use the selected logo for the multi-size Windows executable icon, setup and installed shortcuts, and Windows' installed-app listing. Apply the selected logo and palette to the prototype before carrying them into the desktop interface. Use the accent for active navigation, focus, and storage totals. Check that the logo reads clearly at 16, 24, and 32 pixels and that text has sufficient contrast.
+
+The current executable icon is declared in `windirstat/windirstat.rc` and the MSI points at the same icon through `setup/msi/Defines.wxi`. Update the product display name in the application resources and installer metadata. Verify the finished MSI and installed shortcuts on a machine that also has upstream WinDirStat installed.
 
 ## Windows implementation
 
