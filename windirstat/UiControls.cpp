@@ -5,6 +5,7 @@
 // Distributed WITHOUT ANY WARRANTY; see LICENSE.md for details.
 
 #include "pch.h"
+#include "StorageAppearance.h"
 
 // -----------------------------------------------------------------------------
 //  Class-owned theme drawing
@@ -317,35 +318,19 @@ void CTabControl::OnPaint()
     CBufferedDC dc(paintDC, this);
 
     const CRect rcClient = GetClientRect();
-    const COLORREF tabBorder = GetSysColor(COLOR_3DSHADOW);
-    const COLORREF tabPane = DarkMode::IsDarkModeActive()
-        ? DarkMode::SystemColor(COLOR_WINDOW) : GetSysColor(COLOR_3DHILIGHT);
-    const COLORREF tabStrip = DarkMode::IsDarkModeActive()
-        ? DarkMode::SystemColor(COLOR_WINDOW) : GetSysColor(COLOR_3DFACE);
-    const COLORREF buttonFace = DarkMode::SystemColor(COLOR_BTNFACE);
+    const auto colors = GetStorageColors();
 
     const int tabH = TabStripHeight();
     const bool bottomTabs = m_location == Location::Bottom;
     const bool labelOnlyTabs = UsesLabelOnlyTabs();
-    const bool dark = IsDarkColor(tabStrip) || IsDarkColor(tabPane);
-    const COLORREF controlBackground = labelOnlyTabs ? buttonFace : tabPane;
-    dc.FillSolidRect(rcClient, controlBackground);
+    dc.FillSolidRect(rcClient, colors.surface);
 
     CRect rcStrip = bottomTabs ?
         CRect(rcClient.left, std::max(rcClient.top, rcClient.bottom - tabH), rcClient.right, rcClient.bottom) :
         CRect(rcClient.left, rcClient.top, rcClient.right, std::min(rcClient.bottom, rcClient.top + tabH));
-    const COLORREF stripBg = dark ? tabStrip
-                                  : (labelOnlyTabs ? buttonFace : tabStrip);
-    const COLORREF stripBorder = dark ? RGB(95, 95, 95) : tabBorder;
-    const COLORREF activeTabBg = dark ? RGB(190, 190, 190)
-                                      : (labelOnlyTabs ? buttonFace : RGB(255, 255, 255));
-    const COLORREF inactiveTabBg = dark ? RGB(31, 31, 31)
-                                        : BlendColor(tabStrip, RGB(0, 0, 0), 0.05);
-    const COLORREF activeText = dark ? RGB(0, 0, 0) : DarkMode::SystemColor(COLOR_WINDOWTEXT);
-    const COLORREF inactiveText = dark ? RGB(235, 235, 235) : DarkMode::SystemColor(COLOR_WINDOWTEXT);
-    dc.FillSolidRect(rcStrip, stripBg);
+    dc.FillSolidRect(rcStrip, colors.rail);
     const int paneEdge = bottomTabs ? rcStrip.top : rcStrip.bottom - 1;
-    dc.FillSolidRect(rcStrip.left, paneEdge, rcStrip.Width(), 1, stripBorder);
+    dc.FillSolidRect(rcStrip.left, paneEdge, rcStrip.Width(), 1, colors.line);
 
     HFONT font = GetFont();
     if (font == nullptr) font = GetAppFont(m_hWnd);
@@ -368,60 +353,25 @@ void CTabControl::OnPaint()
     const auto scale = [dpi](const int value) { return MulDiv(value, dpi, 96); };
     const int textInsetX = scale(5);
     const int textInsetY = scale(1);
-    const int minSlant = scale(4);
-    const int maxSlant = scale(8);
     const bool drawFocus = m_focusTabStrip && HasFocus() &&
         (SendMessage(WM_QUERYUISTATE) & UISF_HIDEFOCUS) == 0;
-    CBrush activeBrush(activeTabBg);
-    CBrush inactiveBrush(inactiveTabBg);
-    CPen borderPen(PS_SOLID, 1, stripBorder);
-    CPen focusPen(PS_DOT, 1, activeText);
+    const CBrush activeBrush(colors.selected);
 
     auto drawTab = [&](const TabPaintInfo& tab, const bool active)
         {
             if (tab.logical < 0 || tab.logical >= GetTabCount()) return;
             const CRect rcTab = tab.rect;
-            const int slant = std::clamp(rcTab.Width() / 5, minSlant, maxSlant);
-            POINT points[4] = {};
-            if (bottomTabs)
+            if (active)
             {
-                points[0] = { rcTab.left, rcTab.top };
-                points[1] = { rcTab.left + slant, rcTab.bottom - 1 };
-                points[2] = { rcTab.right - slant, rcTab.bottom - 1 };
-                points[3] = { rcTab.right, rcTab.top };
-            }
-            else
-            {
-                points[0] = { rcTab.left, rcTab.bottom - 1 };
-                points[1] = { rcTab.left + slant, rcTab.top };
-                points[2] = { rcTab.right - slant, rcTab.top };
-                points[3] = { rcTab.right, rcTab.bottom - 1 };
+                auto fillRect = rcTab;
+                fillRect.Deflate(scale(2), scale(2));
+                const GdiObjectSelection brush(&dc, &activeBrush);
+                const StockObjectSelection pen(&dc, NULL_PEN);
+                dc.RoundRect(fillRect, CPoint(scale(8), scale(8)));
+                if (drawFocus) DarkMode::DrawFocusRect(&dc, fillRect);
             }
 
-            const CBrush& fillBrush = active ? activeBrush : inactiveBrush;
-            {
-                GdiObjectSelection selectBrush(&dc, &fillBrush);
-                StockObjectSelection selectFillPen(&dc, NULL_PEN);
-                dc.Polygon(points, 4);
-            }
-
-            {
-                GdiObjectSelection selectPen(&dc, active && drawFocus ? &focusPen : &borderPen);
-                if (active)
-                {
-                    dc.MoveTo(points[0]);
-                    dc.LineTo(points[1]);
-                    dc.LineTo(points[2]);
-                    dc.LineTo(points[3]);
-                }
-                else
-                {
-                    const POINT outline[5] = { points[0], points[1], points[2], points[3], points[0] };
-                    dc.Polyline(outline, 5);
-                }
-            }
-
-            dc.SetTextColor(active ? activeText : inactiveText);
+            dc.SetTextColor(active ? colors.accent : colors.text);
             const HGDIOBJ textFont = active && boldFont ? boldFont.Handle() : font;
             GdiObjectSelection selectTextFont(&dc, textFont);
             CRect rcText = rcTab;

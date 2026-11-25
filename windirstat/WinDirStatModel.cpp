@@ -49,6 +49,7 @@ void CWinDirStatModel::ClearScanState()
 
     // Reset extension data
     GetExtensionData()->clear();
+    m_scannedCaches.clear();
     m_registeredExtensions.clear();
 
     // Clean up visual artifacts - controllers manage their own root items

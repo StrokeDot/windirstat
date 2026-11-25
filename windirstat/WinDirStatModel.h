@@ -8,6 +8,7 @@
 
 #include "pch.h"
 #include "TreeListControl.h"
+#include "StorageCacheIndex.h"
 
 class CItem;
 class CItemDupe;
@@ -91,6 +92,7 @@ public:
     COLORREF GetZoomColor() const { return RGB(0, 0, 255); }
 
     CExtensionData* GetExtensionData() { return &m_extensionData; }
+    const std::vector<StorageCache>& GetScannedCaches() const { return m_scannedCaches; }
     SExtensionRecord* GetExtensionDataRecord(const std::wstring& ext);
     bool IsExtensionRegistered(const std::wstring& ext) const { return m_registeredExtensions.contains(ext); }
     ULONGLONG GetRootSize() const;
@@ -172,6 +174,7 @@ private:
 
     std::mutex m_extensionMutex;
     CExtensionData m_extensionData;    // Base for the extension view and cushion colors
+    std::vector<StorageCache> m_scannedCaches; // Filled during scan finalization, read after the worker exits
 
     std::vector<CItem*> m_reselectChildStack; // Stack for the "Re-select Child"-Feature
 

@@ -359,7 +359,7 @@ void CWdsListControl::CalculateRowHeight()
     if (const auto metrics = dc.GetTextMetrics())
     {
         // Row height accommodates both the text and icon, plus padding.
-        m_rowHeight = (std::max<int>(metrics->tmHeight, m_iconSize) + (LABEL_Y_MARGIN * 2) + 1) | 1;
+        m_rowHeight = (std::max<int>(metrics->tmHeight, m_iconSize) + ScaleForDpi(8) + 1) | 1;
     }
 }
 

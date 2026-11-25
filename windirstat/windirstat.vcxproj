@@ -223,6 +223,10 @@ POWERSHELL.EXE -NoLogo -ExecutionPolicy Unrestricted -NoProfile -File "$(Project
     <ClInclude Include="ScanTiming.h" />
     <ClInclude Include="SmartStorageUpdater.h" />
     <ClInclude Include="StorageWorkspace.h" />
+    <ClInclude Include="StorageAppearance.h" />
+    <ClInclude Include="StorageCacheIndex.h" />
+    <ClInclude Include="StorageFileCategory.h" />
+    <ClInclude Include="StorageFileTypesPane.h" />
     <ClInclude Include="Dialogs\AppCachesPane.h" />
     <ClInclude Include="UpdateManifest.h" />
     <ClInclude Include="Options.h" />
@@ -331,6 +335,8 @@ POWERSHELL.EXE -NoLogo -ExecutionPolicy Unrestricted -NoProfile -File "$(Project
     <ClCompile Include="Dialogs\RecentFilesDlg.cpp" />
     <ClCompile Include="SmartStorageUpdater.cpp" />
     <ClCompile Include="StorageWorkspace.cpp" />
+    <ClCompile Include="StorageCacheIndex.cpp" />
+    <ClCompile Include="StorageFileTypesPane.cpp" />
     <ClCompile Include="Dialogs\AppCachesPane.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

@@ -8,6 +8,7 @@
 
 #include "pch.h"
 #include "ItemSearch.h"
+#include "StorageFileCategory.h"
 #include "TreeListControl.h"
 
 struct SearchCriteria
@@ -23,6 +24,7 @@ struct SearchCriteria
     std::optional<ULONGLONG> physicalMinimum;
     std::optional<ULONGLONG> physicalMaximum;
     std::wstring owner;
+    std::optional<StorageFileCategory> category;
 
     bool MatchesSize(const CItem* item) const;
     bool Matches(const CItem* item, const std::wregex& termRegex) const;

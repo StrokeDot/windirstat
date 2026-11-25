@@ -53,6 +53,8 @@ bool SearchCriteria::Matches(const CItem* item, const std::wregex& termRegex) co
     const bool typeWanted = (includeFiles && item->IsTypeOrFlag(IT_FILE)) ||
         (includeFolders && item->IsTypeOrFlag(IT_DRIVE, IT_DIRECTORY));
     if (!MatchesSize(item) || !typeWanted) return false;
+    if (category && (!item->IsTypeOrFlag(IT_FILE) || CategorizeExtension(item->GetExtension()) != *category))
+        return false;
 
     // Check for match
     const std::wstring remoteName = item->IsTypeOrFlag(ITF_REMOTE) ? item->GetName() : std::wstring{};

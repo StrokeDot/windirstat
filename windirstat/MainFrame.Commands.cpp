@@ -27,6 +27,18 @@ void CMainFrame::OnViewRecentFiles()
     m_workspace.ShowPage(CStorageWorkspace::Page::Recent);
 }
 
+void CMainFrame::BrowseFileCategory(StorageFileCategory category)
+{
+    auto* model = CWinDirStatModel::Get();
+    if (!model->IsScanSettled()) return;
+    SearchCriteria criteria;
+    criteria.includeFolders = false;
+    criteria.category = category;
+    m_workspace.ShowPage(CStorageWorkspace::Page::Overview);
+    CFileSearchControl::Get()->ProcessSearch(model->GetRootItem(), criteria);
+    GetFileTabbedView()->SetActiveTab(FileTab::Search);
+}
+
 void CMainFrame::OnToolsRecovery()
 {
     if (IsElevationActive()) RecoveryDlg(this).ShowModal();

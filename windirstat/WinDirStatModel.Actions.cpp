@@ -1445,6 +1445,7 @@ void CWinDirStatModel::StartScanningEngine(std::vector<CItem*> items)
         {
             CFileSearchControl::Get()->RestoreItems();
         });
+        m_scannedCaches = FindScannedCaches(*GetRootItem());
         const auto searchTotals = CFileSearchControl::Get()->GetRootItem()->CalculateTotals();
 
         // Invoke a UI thread to do updates

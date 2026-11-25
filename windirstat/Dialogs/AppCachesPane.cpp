@@ -1,31 +1,13 @@
-// WinDirStat - Windows Directory Statistics
+﻿// WinDirStat - Windows Directory Statistics
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "pch.h"
 #include "AppCachesPane.h"
 #include "Layout.h"
+#include "StorageCacheIndex.h"
 
 namespace
 {
-    struct CacheFolder
-    {
-        const KNOWNFOLDERID& profile;
-        std::wstring_view relative;
-        std::wstring_view application;
-        std::wstring_view policy;
-        const wchar_t* guide;
-    };
-
-    constexpr auto nvidiaGuide = L"https://www.nvidia.com/content/Control-Panel-Help/vLatest/en-us/mergedProjects/3D%20Settings/Manage_3D_Settings_%28reference%29.htm";
-    constexpr auto adobeGuide = L"https://helpx.adobe.com/premiere/desktop/troubleshooting/media-issues/clear-media-cache-using-preferences.html";
-    const std::array knownCaches{
-        CacheFolder{ FOLDERID_LocalAppData, L"NVIDIA\\DXCache", L"NVIDIA", IDS_CACHE_KEEP, nvidiaGuide },
-        CacheFolder{ FOLDERID_LocalAppData, L"NVIDIA\\GLCache", L"NVIDIA", IDS_CACHE_KEEP, nvidiaGuide },
-        CacheFolder{ FOLDERID_LocalAppData, L"NVIDIA Corporation\\NV_Cache", L"NVIDIA", IDS_CACHE_KEEP, nvidiaGuide },
-        CacheFolder{ FOLDERID_RoamingAppData, L"Adobe\\Common\\Media Cache", L"Adobe Premiere", IDS_CACHE_IN_APP, adobeGuide },
-        CacheFolder{ FOLDERID_RoamingAppData, L"Adobe\\Common\\Media Cache Files", L"Adobe Premiere", IDS_CACHE_IN_APP, adobeGuide },
-    };
-
     struct CacheRow
     {
         std::array<std::wstring, 4> columns;
@@ -100,20 +82,38 @@ namespace
         m_list.SetItemCountEx(0, 0);
         m_rows.clear();
         const auto* model = CWinDirStatModel::Get();
-        const CItem* scanned = model->IsScanSettled() ? model->GetRootItem() : nullptr;
-        for (const CacheFolder& cache : knownCaches)
+        const bool settled = model->IsScanSettled();
+        auto caches = FindProfileCaches();
+        if (settled)
         {
-            CComHeapPtr<wchar_t> profile;
-            if (FAILED(SHGetKnownFolderPath(cache.profile, KF_FLAG_DONT_VERIFY, nullptr, &profile)) || !profile)
-                continue;
-            const auto path = (std::filesystem::path(profile.m_pData) / cache.relative).wstring();
-            const DWORD attributes = GetFileAttributesW(path.c_str());
-            if (attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
-            const CItem* item = scanned ? scanned->FindItemByPath(path, false, IT_DIRECTORY) : nullptr;
-            const auto size = item && item->IsDone() && item->HasSizePhysical()
-                ? FormatSizeSuffixes(item->GetSizePhysical()) : Localization::Lookup(IDS_CACHE_SIZE_PENDING);
-            m_rows.push_back({ { std::wstring(cache.application), path, size, Localization::Lookup(cache.policy) },
-                cache.guide });
+            for (const auto& scanned : model->GetScannedCaches())
+            {
+                const auto existing = std::ranges::find_if(caches, [&scanned](const auto& cache)
+                {
+                    return CompareStringOrdinal(cache.path.c_str(), -1, scanned.path.c_str(), -1, TRUE) == CSTR_EQUAL;
+                });
+                if (existing == caches.end()) caches.push_back(scanned);
+                else existing->bytes = scanned.bytes;
+            }
+            // Known folders can have a custom location with no recognizable parent names.
+            for (auto& cache : caches)
+            {
+                if (cache.bytes) continue;
+                const auto* item = model->GetRootItem()->FindItemByPath(cache.path, false, IT_DIRECTORY);
+                if (item && item->IsDone() && item->HasSizePhysical() &&
+                    item->GetScanResult().outcome == ScanOutcome::Complete) cache.bytes = item->GetSizePhysical();
+            }
+        }
+        std::ranges::sort(caches, [](const StorageCache& a, const StorageCache& b)
+        {
+            if (a.bytes != b.bytes) return a.bytes > b.bytes;
+            return CompareStringOrdinal(a.path.c_str(), -1, b.path.c_str(), -1, TRUE) == CSTR_LESS_THAN;
+        });
+        for (auto& cache : caches)
+        {
+            const auto size = cache.bytes ? FormatSizeSuffixes(*cache.bytes) : Localization::Lookup(IDS_CACHE_SIZE_PENDING);
+            m_rows.push_back({ { cache.application, std::move(cache.path), size, Localization::Lookup(cache.guidance) },
+                cache.helpUrl });
         }
         m_list.SetItemCountEx(static_cast<int>(m_rows.size()), 0);
         SetText(IDC_APP_CACHES_STATUS, Localization::Lookup(m_rows.empty() ? IDS_CACHE_EMPTY : IDS_CACHE_SCAN_SCOPE));
@@ -125,7 +125,7 @@ namespace
         const int index = m_list.GetFirstSelectedIndex();
         const bool selected = index >= 0 && static_cast<std::size_t>(index) < m_rows.size();
         GetDlgItem(IDC_APP_CACHES_OPEN).EnableWindow(selected);
-        GetDlgItem(IDC_APP_CACHES_GUIDE).EnableWindow(selected);
+        GetDlgItem(IDC_APP_CACHES_GUIDE).EnableWindow(selected && m_rows[index].guide);
     }
 
     void AppCachesPane::OpenFolder()
@@ -138,7 +138,7 @@ namespace
     void AppCachesPane::OpenGuide()
     {
         const int index = m_list.GetFirstSelectedIndex();
-        if (index >= 0 && static_cast<std::size_t>(index) < m_rows.size())
+        if (index >= 0 && static_cast<std::size_t>(index) < m_rows.size() && m_rows[index].guide)
             ShellExecuteW(Handle(), L"open", m_rows[index].guide, nullptr, nullptr, SW_SHOWNORMAL);
     }
 

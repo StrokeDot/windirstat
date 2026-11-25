@@ -244,6 +244,13 @@
 #define IDC_APP_CACHES_REFRESH          1216
 #define IDC_APP_CACHES_OPEN             1217
 #define IDC_APP_CACHES_GUIDE            1218
+#define IDC_WORKSPACE_TYPES             1220
+#define IDC_WORKSPACE_SCAN_ACTION       1221
+#define IDC_TYPES_PANE                  1222
+#define IDC_TYPES_EXTENSIONS            1223
+#define IDC_TYPES_BROWSE                1224
+#define IDC_TYPES_CATEGORY_FIRST        1230
+#define IDC_TYPES_CATEGORY_LAST         1237
 #define ID_APP_ABOUT                    32768
 #define ID_APP_EXIT                     32769
 #define ID_CLEANUP_CREATE_HARDLINK      32770

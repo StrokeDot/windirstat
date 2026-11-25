@@ -655,8 +655,9 @@ bool CMainFrame::OnCreateClient()
     return true;
 }
 
-void CMainFrame::UpdateAllPanes(CWnd* sender, const MODEL_CHANGE change, CItem* item) const
+void CMainFrame::UpdateAllPanes(CWnd* sender, const MODEL_CHANGE change, CItem* item)
 {
+    if (change == MODEL_CHANGE_NONE || change == MODEL_CHANGE_NEW_ROOT) m_workspace.InvalidateScanResults();
     const std::array<CWinDirStatPane*, 2> panes{
         m_fileTabbedView.get(), m_extensionView.get()
     };
@@ -777,6 +778,7 @@ void CMainFrame::OnTimer(const UINT_PTR nIDEvent)
     }
 
     CWinDirStatModel::Get()->RunPendingHeapCleanup();
+    if (doInfrequentUpdate) m_workspace.PollScanResults();
     if (::IsWindowVisible(Handle())) SmartStorageUpdater::Poll(*this,
         ::IsWindowEnabled(Handle()) && !CWinDirStatModel::Get()->IsScanRunning());
 

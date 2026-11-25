@@ -1,9 +1,10 @@
-// WinDirStat - Windows Directory Statistics
+﻿// WinDirStat - Windows Directory Statistics
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
 #include "pch.h"
+#include "StorageFileTypesPane.h"
 
 class CStorageNavigationButton final : public CButton
 {
@@ -18,12 +19,14 @@ private:
 class CStorageWorkspace final : public MessageTarget<CStorageWorkspace, CWnd>
 {
 public:
-    enum class Page : unsigned { Overview, Caches, Recent };
+    enum class Page : unsigned { Overview, Types, Caches, Recent };
 
     bool CreateWorkspace(CWnd* frame);
     void SetOverview(CWnd* overview);
     void ShowPage(Page page);
     void RefreshCurrentPage();
+    void PollScanResults();
+    void InvalidateScanResults() { m_resultsDirty = true; }
     void SetScanStatus(std::wstring status, std::wstring target, std::optional<int> percent, bool canPause, bool paused);
     void ClearScanStatus();
     void OnAppearanceChanged() override;
@@ -37,10 +40,13 @@ private:
     bool OnEraseBkgnd(CDC*) { return true; }
     void OnNavigate(UINT command);
     void OnPause();
+    void OnScanAction();
 
-    std::array<CStorageNavigationButton, 3> m_navigation;
+    std::array<CStorageNavigationButton, 4> m_navigation;
     CButton m_pause;
+    CButton m_scanAction;
     CWnd* m_overview{};
+    std::unique_ptr<CStorageFileTypesPane> m_types;
     std::unique_ptr<CWnd> m_caches;
     std::unique_ptr<CWnd> m_recent;
     Page m_page = Page::Overview;
@@ -54,4 +60,6 @@ private:
     std::optional<int> m_percent;
     bool m_canPause = false;
     bool m_paused = false;
+    bool m_previousScanSettled = false;
+    bool m_resultsDirty = false;
 };

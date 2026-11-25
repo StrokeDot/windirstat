@@ -72,7 +72,7 @@ void CFileTopView::InitializeColumns()
     auto& control = GetControl();
 
     // Columns should be in enumeration order so initial sort will work
-    InsertCol(IDS_COL_NAME, LVCFMT_LEFT, 500, COL_ITEMTOP_NAME);
+    InsertCol(IDS_COL_NAME, LVCFMT_LEFT, 360, COL_ITEMTOP_NAME);
     InsertCol(IDS_COL_SIZE_PHYSICAL, LVCFMT_RIGHT, 90, COL_ITEMTOP_SIZE_PHYSICAL);
     InsertCol(IDS_COL_SIZE_LOGICAL, LVCFMT_RIGHT, 90, COL_ITEMTOP_SIZE_LOGICAL);
     InsertCol(IDS_COL_LAST_CHANGE, LVCFMT_LEFT, 120, COL_ITEMTOP_LAST_CHANGE);
@@ -100,7 +100,7 @@ void CFileSearchView::InitializeColumns()
     auto& control = GetControl();
 
     // Columns should be in enumeration order so initial sort will work
-    InsertCol(IDS_COL_NAME, LVCFMT_LEFT, 500, COL_ITEMSEARCH_NAME);
+    InsertCol(IDS_COL_NAME, LVCFMT_LEFT, 360, COL_ITEMSEARCH_NAME);
     InsertCol(IDS_COL_SIZE_PHYSICAL, LVCFMT_RIGHT, 90, COL_ITEMSEARCH_SIZE_PHYSICAL);
     InsertCol(IDS_COL_SIZE_LOGICAL, LVCFMT_RIGHT, 90, COL_ITEMSEARCH_SIZE_LOGICAL);
     InsertCol(IDS_COL_LAST_CHANGE, LVCFMT_LEFT, 120, COL_ITEMSEARCH_LAST_CHANGE);

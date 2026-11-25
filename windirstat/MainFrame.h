@@ -174,6 +174,7 @@ public:
         return static_cast<CFileTreeView*>(m_fileTabbedView->GetPane(FileTab::Tree));
     }
     CFileTabbedView* GetFileTabbedView() const { return m_fileTabbedView.get(); }
+    void BrowseFileCategory(StorageFileCategory category);
     CExtensionView* GetExtensionView() const { return m_extensionView.get(); }
 
     void CreateProgress(ULONGLONG range);
@@ -311,7 +312,7 @@ public:
     static CMainFrame* Get() { return s_Singleton; }
     static std::wstring GetFullBaseTitle();
     void UpdateFrameTitleForScan(std::wstring_view scanName = {});
-    void UpdateAllPanes(CWnd* sender, MODEL_CHANGE change, CItem* item) const;
+    void UpdateAllPanes(CWnd* sender, MODEL_CHANGE change, CItem* item);
     void RebuildToolBar(bool rebuildButtons = true);
     void SetWatcherToolBarButtons(bool visible, bool updateLayout = true);
     void RebuildLayout(bool resetPositions = false);

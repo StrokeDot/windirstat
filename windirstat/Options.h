@@ -188,12 +188,12 @@ public:
         L"ShowRemoveEmptyFoldersPrompt", true, CheckboxBind(IDC_PROMPT_REMOVE_EMPTY) };
     inline static Setting<bool> ShowMicrosoftProgress{ OptionsGeneral,
         L"ShowMicrosoftProgress", false, CheckboxBind(IDC_SHOW_MICROSOFT_PROGRESS) };
-    inline static Setting<bool> ShowFileTypes{ OptionsGeneral, L"ShowFileTypes", true };
+    inline static Setting<bool> ShowFileTypes{ OptionsGeneral, L"ShowExtensionSidebar", false };
     inline static Setting<bool> GroupUnregisteredTypes{ OptionsGeneral, L"GroupUnregisteredTypes", false };
     inline static Setting<bool> ShowFreeSpace{ OptionsGeneral, L"ShowFreeSpace", false };
     inline static Setting<bool> ShowStatusBar{ OptionsGeneral, L"ShowStatusBar", true };
     inline static Setting<bool> ShowTimeSpent{ OptionsFileTree, L"ShowTimeSpent", true };
-    inline static Setting<bool> ShowToolBar{ OptionsGeneral, L"ShowToolBar", true };
+    inline static Setting<bool> ShowToolBar{ OptionsGeneral, L"ShowClassicToolBar", false };
     inline static Setting<int> ToolBarSizePercent{ OptionsGeneral, L"ToolBarSizePercent", 0, 0, 200 };
     inline static Setting<bool> ShowUnknown{ OptionsGeneral, L"ShowUnknown", false };
     inline static Setting<bool> SkipDupeDetectionCloudLinks{ OptionsGeneral,
